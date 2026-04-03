@@ -42,7 +42,7 @@ const GruposList = ({
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Nombre</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Nombre</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Rango Edades</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Estudiantes</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Horario</th>
@@ -69,13 +69,22 @@ const GruposList = ({
                     {grupo.horario || 'No definido'}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => onImportExcel(grupo)}
-                      className="inline-flex items-center px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-xl transition shadow-sm hover:shadow-md"
-                    >
-                      <CloudArrowUpIcon className="w-4 h-4 mr-1" />
-                      Excel
-                    </button>
+                    <div className="flex justify-center space-x-2">
+                       <button
+                         onClick={() => onManageEstudiantes(grupo)}
+                         className="inline-flex items-center px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition shadow-sm hover:shadow-md"
+                       >
+                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                         Gestionar
+                       </button>
+                       <button
+                         onClick={() => onImportExcel(grupo)}
+                         className="inline-flex items-center px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-xl transition shadow-sm hover:shadow-md"
+                       >
+                         <CloudArrowUpIcon className="w-4 h-4 mr-1" />
+                         Excel
+                       </button>
+                    </div>
                   </td>
                 </tr>
               ))}

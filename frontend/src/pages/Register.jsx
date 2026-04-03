@@ -47,13 +47,15 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-blue-900 to-slate-900 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Decorative background shapes */}
-      <div className="absolute top-[10%] left-[-5%] w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-      <div className="absolute bottom-[20%] right-[-10%] w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+    <div 
+      className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: "url('/fondo-login.jpg')" }}
+    >
+      {/* Overlay oscuro y difuminado moderno para resaltar la tarjeta */}
+      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-[6px] z-0"></div>
 
       {/* Main Glassmorphism Card */}
-      <div className="relative w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 p-10 rounded-3xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] z-10 transition-all duration-500 hover:shadow-[0_8px_40px_0_rgba(0,0,0,0.45)]">
+      <div className="relative w-full max-w-md bg-white/10 backdrop-blur-3xl border border-white/20 p-10 rounded-3xl shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] z-10 transition-all duration-500 hover:shadow-[0_8px_40px_0_rgba(0,0,0,0.6)]">
         
         {/* Header */}
         <div className="text-center mb-8">

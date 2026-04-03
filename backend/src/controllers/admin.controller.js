@@ -193,17 +193,39 @@ exports.importarEstudiantesAdmin = async (req, res) => {
         const nombres = row.nombre || row.nombres || "";
         const apellidos = row.apellido || row.apellidos || "";
         const codigo = row.codigo || row.documento || null;
+        let fechaStr = null;
         const edad = parseInt(row.edad);
-
-        if (!nombres || !apellidos || !edad || edad <= 0) {
-          resultados.errores.push(`Fila inválida: ${JSON.stringify(row)}`);
-          continue;
+        
+        if (row.fecha_nacimiento) {
+           let fNac = row.fecha_nacimiento;
+           if (fNac instanceof Date) {
+             fechaStr = fNac.toISOString().split('T')[0];
+           } else if (typeof fNac === 'number') {
+             const unixTimestamp = (fNac - 25569) * 86400 * 1000;
+             fechaStr = new Date(unixTimestamp).toISOString().split('T')[0];
+           } else if (typeof fNac === 'string' && fNac.includes('/')) {
+              const parts = fNac.split('/');
+              if (parts.length === 3) {
+                  const dd = parts[0].padStart(2, '0');
+                  const mm = parts[1].padStart(2, '0');
+                  const yyyy = parts[2];
+                  if (yyyy.length === 4) fechaStr = `${yyyy}-${mm}-${dd}`;
+              }
+           } else if (typeof fNac === 'string' && fNac.includes('-')) {
+              fechaStr = fNac;
+           }
+        } 
+        
+        if (!fechaStr && !isNaN(edad) && edad > 0) {
+           const fechaNac = new Date();
+           fechaNac.setFullYear(fechaNac.getFullYear() - edad);
+           fechaStr = fechaNac.toISOString().split('T')[0];
         }
 
-        // Compute fecha_nacimiento from edad
-        const fechaNacimiento = new Date();
-        fechaNacimiento.setFullYear(fechaNacimiento.getFullYear() - edad);
-        const fechaStr = fechaNacimiento.toISOString().split('T')[0];
+        if (!nombres || !apellidos || !fechaStr) {
+          resultados.errores.push(`Fila inválida o incompleta: nombres o fecha/edad faltantes. Row: ${JSON.stringify(row)}`);
+          continue;
+        }
 
         // Check existing nino by codigo or nombres+fecha
         let existingNino = codigo ? await pool.query(`SELECT id_nino FROM ninos WHERE documento = $1`, [codigo]) : null;
@@ -304,5 +326,83 @@ exports.asignarGrupoDocente = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error asignando grupo" });
+  }
+};
+
+// Agregar estudiante manual a grupo admin
+exports.agregarEstudianteGrupo = async (req, res) => {
+  try {
+    const { id_grupo } = req.params;
+    const { nombres, apellidos, fecha_nacimiento, documento } = req.body;
+
+    if (!nombres || !apellidos || !fecha_nacimiento) {
+      return res.status(400).json({ message: "Nombres, apellidos y fecha de nacimiento son obligatorios" });
+    }
+
+    const grupoExists = await pool.query("SELECT id_grupo FROM grupos WHERE id_grupo = $1", [id_grupo]);
+    if (grupoExists.rows.length === 0) {
+      return res.status(404).json({ message: "Grupo no encontrado" });
+    }
+
+    let idNino;
+    let existingNino = documento ? 
+      await pool.query("SELECT id_nino FROM ninos WHERE documento = $1", [documento]) : null;
+
+    if (!existingNino || existingNino.rows.length === 0) {
+      existingNino = await pool.query(
+        "SELECT id_nino FROM ninos WHERE nombres = $1 AND fecha_nacimiento = $2",
+        [nombres, fecha_nacimiento]
+      );
+    }
+
+    if (existingNino && existingNino.rows.length > 0) {
+      idNino = existingNino.rows[0].id_nino;
+    } else {
+      const result = await pool.query(
+        `INSERT INTO ninos (nombres, apellidos, fecha_nacimiento, documento, estado)
+         VALUES ($1, $2, $3, $4, TRUE) RETURNING id_nino`,
+        [nombres, apellidos, fecha_nacimiento, documento || null]
+      );
+      idNino = result.rows[0].id_nino;
+    }
+
+    const checkMat = await pool.query(
+      "SELECT id_matricula FROM matriculas WHERE id_nino = $1 AND id_grupo = $2",
+      [idNino, id_grupo]
+    );
+    
+    if (checkMat.rows.length > 0) {
+      return res.status(400).json({ message: "El estudiante ya está en este grupo" });
+    }
+
+    await pool.query(
+      "INSERT INTO matriculas (id_nino, id_grupo, fecha_matricula, estado) VALUES ($1, $2, CURRENT_DATE, TRUE)",
+      [idNino, id_grupo]
+    );
+
+    res.json({ message: "Estudiante agregado exitosamente" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error al agregar estudiante" });
+  }
+};
+
+// Eliminar estudiante de grupo admin
+exports.eliminarEstudianteGrupo = async (req, res) => {
+  try {
+    const { id_matricula } = req.params;
+
+    const checkMat = await pool.query(
+      "SELECT id_matricula FROM matriculas WHERE id_matricula = $1",
+      [id_matricula]
+    );
+    if (checkMat.rows.length === 0) return res.status(404).json({ message: "Matrícula no encontrada" });
+
+    await pool.query("DELETE FROM matriculas WHERE id_matricula = $1", [id_matricula]);
+
+    res.json({ message: "Estudiante retirado del grupo" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error al retirar estudiante" });
   }
 };

@@ -11,6 +11,8 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
+  TrashIcon,
+  UserPlusIcon
 } from "@heroicons/react/24/outline";
 
 import {
@@ -56,6 +58,14 @@ export default function DocenteDashboard() {
   const [reporteTipo, setReporteTipo] = useState("general");
   const [reporteSuccess, setReporteSuccess] = useState("");
   const [reporteError, setReporteError] = useState("");
+
+  // Estados estudiantes lista manual
+  const [estLista, setEstLista] = useState([]);
+  const [estListaLoading, setEstListaLoading] = useState(false);
+  const [addForm, setAddForm] = useState({ nombres: "", apellidos: "", fecha_nacimiento: "", documento: "" });
+  const [addingError, setAddingError] = useState("");
+  const [addingSuccess, setAddingSuccess] = useState("");
+  const [adding, setAdding] = useState(false);
 
   // ====== ESTADOS LOCALES (CDI FEATURES) ======
   const [guias, setGuias] = useState([]);
@@ -173,6 +183,55 @@ export default function DocenteDashboard() {
       setImporting(false);
     }
   };
+
+  // ========== MANUAL MANAGEMENT FUNCTIONS ============
+  const loadEstudiantesLista = async () => {
+    setEstListaLoading(true);
+    try {
+      const res = await API.get("/docente/estudiantes/lista");
+      setEstLista(res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setEstListaLoading(false);
+    }
+  };
+
+  const handleAddSubmit = async (e) => {
+    e.preventDefault();
+    setAdding(true);
+    setAddingError("");
+    setAddingSuccess("");
+    try {
+      await API.post("/docente/estudiantes/manual", addForm);
+      setAddingSuccess("Estudiante agregado correctamente.");
+      setAddForm({ nombres: "", apellidos: "", fecha_nacimiento: "", documento: "" });
+      loadEstudiantesLista();
+      setTimeout(() => setAddingSuccess(""), 3000);
+      
+      const dashRes = await API.get("/docente/dashboard");
+      setEstudiantes(dashRes.data.estudiantes);
+    } catch (err) {
+      setAddingError(err.response?.data?.message || "Error al agregar estudiante.");
+    } finally {
+       setAdding(false);
+    }
+  };
+
+  const handleDeleteEstudiante = async (id_matricula) => {
+    if (!window.confirm("¿Seguro que deseas retirar a este estudiante de tu grupo?")) return;
+    setAddingError("");
+    try {
+      await API.delete(`/docente/estudiantes/${id_matricula}`);
+      loadEstudiantesLista();
+      
+      const dashRes = await API.get("/docente/dashboard");
+      setEstudiantes(dashRes.data.estudiantes);
+    } catch (err) {
+      alert("Error al retirar al estudiante.");
+    }
+  };
+  // ===================================================
 
   // Crear reporte
   const handleCrearReporte = async (e) => {
@@ -426,7 +485,10 @@ export default function DocenteDashboard() {
               <CalendarIcon className="w-5 h-5" /> Asistencia
             </button>
             <button
-              onClick={() => setGestionSubView("estudiantes")}
+              onClick={() => {
+                setGestionSubView("estudiantes");
+                loadEstudiantesLista();
+              }}
               className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
                 gestionSubView === "estudiantes"
                   ? "bg-white text-indigo-600 shadow-md ring-1 ring-slate-900/5"
@@ -447,75 +509,142 @@ export default function DocenteDashboard() {
             </button>
           </div>
 
-          {/* Sección: Importar Excel (Estudiantes Tab) */}
+          {/* Sección: Gestionar Estudiantes (Estudiantes Tab) */}
           {gestionSubView === "estudiantes" && (
           <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
-            <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
-              <ArrowUpTrayIcon className="w-6 h-6 mr-2 text-blue-600" />
-              Importar Estudiantes desde Excel
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">
-              El archivo debe tener las columnas: nombres, apellidos, fecha_nacimiento, documento
-            </p>
-            
-            <form onSubmit={handleImport} className="space-y-4">
-              <div className="flex items-center gap-4">
-                <input
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={(e) => setFile(e.target.files[0])}
-                  ref={fileInputRef}
-                  className="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-full file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100"
-                />
-                <button
-                  type="submit"
-                  disabled={importing}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50"
-                >
-                  {importing ? "Importando..." : "Importar"}
-                </button>
-              </div>
-            </form>
+            {/* Top row: Excel Importer */}
+            <div className="mb-10 bg-slate-50 border border-slate-200 p-6 rounded-2xl">
+              <h3 className="text-lg font-semibold text-gray-700 mb-2 flex items-center">
+                <ArrowUpTrayIcon className="w-5 h-5 mr-2 text-blue-600" />
+                Importar Masivamente desde Excel
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                El archivo debe tener las columnas: nombres, apellidos, fecha_nacimiento, documento
+              </p>
+              
+              <form onSubmit={handleImport} className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={(e) => setFile(e.target.files[0])}
+                    ref={fileInputRef}
+                    className="block w-full text-sm text-gray-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-blue-100 file:text-blue-700
+                      hover:file:bg-blue-200"
+                  />
+                  <button
+                    type="submit"
+                    disabled={importing}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl disabled:opacity-50 transition w-full sm:w-auto"
+                  >
+                    {importing ? "Importando..." : "Cargar Excel"}
+                  </button>
+                </div>
+              </form>
 
-            {importResult && !importResult.errores?.length && (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-5 rounded-2xl mb-6 text-sm flex items-start shadow-sm mt-6 animate-fade-in">
-                 <CheckCircleIcon className="w-7 h-7 mr-3 text-emerald-500 shrink-0" />
-                 <div>
-                   <p className="font-extrabold text-base mb-1 tracking-wide">¡Importación Exitosa!</p>
-                   {importResult.creados !== undefined && (
-                     <div className="text-emerald-600/90 font-medium mt-2 space-y-1">
-                       <p>• {importResult.creados} estudiantes nuevos creados.</p>
-                       <p>• {importResult.existentes} estudiantes ya estaban registrados.</p>
+              {importResult && !importResult.errores?.length && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-4 rounded-xl mt-4 text-sm flex items-start shadow-sm animate-fade-in">
+                   <CheckCircleIcon className="w-6 h-6 mr-3 text-emerald-500 shrink-0" />
+                   <div>
+                     <p className="font-bold text-base mb-1">¡Importación Exitosa!</p>
+                     <p className="font-medium">• {importResult.creados} creados, {importResult.existentes} existentes.</p>
+                   </div>
+                </div>
+              )}
+              
+              {importResult && importResult.errores && importResult.errores.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl mt-4 text-sm shadow-sm animate-fade-in">
+                   <div className="flex items-start">
+                     <ExclamationTriangleIcon className="w-6 h-6 mr-3 text-amber-500 shrink-0" />
+                     <div>
+                       <p className="font-bold text-base mb-1 tracking-wide">Importación con Advertencias/Errores</p>
+                       <ul className="list-disc pl-5 mt-2 space-y-1 text-red-600">
+                         {importResult.errores.map((err, i) => (<li key={i}>{err}</li>))}
+                       </ul>
                      </div>
-                   )}
-                 </div>
+                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Row: Manual Addition and List */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Add form */}
+              <div className="lg:col-span-1 bg-gray-50 rounded-2xl p-6 border border-gray-200 h-max">
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
+                  <UserPlusIcon className="w-5 h-5 mr-2 text-indigo-500" />
+                  Agregar Manualmente
+                </h3>
+                <form onSubmit={handleAddSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Nombres *</label>
+                    <input required type="text" value={addForm.nombres} onChange={(e) => setAddForm({ ...addForm, nombres: e.target.value })} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Apellidos *</label>
+                    <input required type="text" value={addForm.apellidos} onChange={(e) => setAddForm({ ...addForm, apellidos: e.target.value })} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Fecha de Nacimiento *</label>
+                    <input required type="date" value={addForm.fecha_nacimiento} onChange={(e) => setAddForm({ ...addForm, fecha_nacimiento: e.target.value })} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Documento (Opcional)</label>
+                    <input type="text" value={addForm.documento} onChange={(e) => setAddForm({ ...addForm, documento: e.target.value })} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                  </div>
+                  <button disabled={adding} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-xl transition text-sm disabled:opacity-50">
+                    {adding ? "Guardando..." : "Agregar al Grupo"}
+                  </button>
+                </form>
               </div>
-            )}
-            
-            {importResult && importResult.errores && importResult.errores.length > 0 && (
-              <div className="bg-amber-50 border border-amber-200 text-amber-800 p-5 rounded-2xl mb-6 text-sm flex items-start shadow-sm mt-6 animate-fade-in">
-                 <ExclamationTriangleIcon className="w-7 h-7 mr-3 text-amber-500 shrink-0" />
-                 <div>
-                   <p className="font-extrabold text-base mb-1 tracking-wide">Importación con Advertencias/Errores</p>
-                   {importResult.creados !== undefined && (
-                     <div className="mb-3 text-amber-700 font-medium">
-                       <p>Creados: {importResult.creados} | Existentes: {importResult.existentes}</p>
-                     </div>
-                   )}
-                   <p className="font-bold text-red-600 mb-2">Detalles de errores:</p>
-                   <ul className="list-disc pl-5 space-y-1 text-red-600">
-                     {importResult.errores.map((err, i) => (
-                       <li key={i}>{err}</li>
-                     ))}
-                   </ul>
-                 </div>
+
+              {/* List */}
+              <div className="lg:col-span-2">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Lista Actual del Grupo ({estLista.length})</h3>
+                
+                {addingError && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl mb-4 text-sm border border-red-200">{addingError}</div>}
+                {addingSuccess && <div className="bg-emerald-50 text-emerald-600 px-4 py-3 rounded-xl mb-4 text-sm border border-emerald-200">{addingSuccess}</div>}
+
+                {estListaLoading ? (
+                  <div className="flex justify-center p-10"><div className="animate-spin h-8 w-8 border-b-2 border-indigo-600 rounded-full"></div></div>
+                ) : estLista.length === 0 ? (
+                  <div className="text-center p-10 bg-gray-50 border border-gray-200 rounded-2xl">
+                    <p className="text-gray-500">No hay estudiantes en tu grupo.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-gray-200 rounded-2xl">
+                    <table className="w-full text-left text-sm whitespace-nowrap">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-4 py-3 font-semibold text-gray-600">Nombre</th>
+                          <th className="px-4 py-3 font-semibold text-gray-600">Fecha Nac.</th>
+                          <th className="px-4 py-3 font-semibold text-gray-600 text-right">Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {estLista.map((est) => (
+                          <tr key={est.id_matricula} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 text-gray-800 font-medium">{est.nombres} {est.apellidos}</td>
+                            <td className="px-4 py-3 text-gray-500">
+                              {est.fecha_nacimiento ? new Date(est.fecha_nacimiento).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <button onClick={() => handleDeleteEstudiante(est.id_matricula)} className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50" title="Retirar">
+                                <TrashIcon className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
           )}
 

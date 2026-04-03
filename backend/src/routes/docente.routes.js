@@ -11,13 +11,19 @@ const {
   registrarAsistencia,
   crearReporte,
   getReportesAdmin,
-  actualizarReporte
+  actualizarReporte,
+  agregarEstudianteManual,
+  eliminarEstudianteManual,
+  getEstudiantesLista
 } = require("../controllers/docente.controller");
 
 // Rutas para docentes (rol 2)
 router.get("/dashboard", verifyToken, hasRole(2), getDashboardDocente);
 router.post("/importar", verifyToken, hasRole(2), upload.single("archivo"), importarEstudiantes);
 router.get("/estudiantes", verifyToken, hasRole(2), getEstudiantesAsistencia);
+router.get("/estudiantes/lista", verifyToken, hasRole(2), getEstudiantesLista);
+router.post("/estudiantes/manual", verifyToken, hasRole(2), agregarEstudianteManual);
+router.delete("/estudiantes/:id_matricula", verifyToken, hasRole(2), eliminarEstudianteManual);
 router.post("/asistencia", verifyToken, hasRole(2), registrarAsistencia);
 router.post("/reportes", verifyToken, hasRole(2), crearReporte);
 

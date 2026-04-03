@@ -72,21 +72,20 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-blue-900 to-slate-900 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Decorative background shapes */}
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-      <div className="absolute top-[20%] right-[-5%] w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-      <div className="absolute bottom-[-20%] left-[20%] w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+    <div
+      className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: "url('/fondo-login.png')" }}
+    >
+      {/* Overlay oscuro y difuminado apenas perceptible para que la foto se vea bien */}
+      <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-[2px] z-0"></div>
 
       {/* Main Glassmorphism Card */}
-      <div className="relative w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 p-10 rounded-3xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] z-10 transition-all duration-500 hover:shadow-[0_8px_40px_0_rgba(0,0,0,0.45)]">
-        
+      <div className="relative w-full max-w-md bg-white/10 backdrop-blur-3xl border border-white/20 p-10 rounded-3xl shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] z-10 transition-all duration-500 hover:shadow-[0_8px_40px_0_rgba(0,0,0,0.6)]">
+
         {/* Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-600/20 mb-4 ring-1 ring-indigo-400/30">
-             <svg className="w-8 h-8 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-             </svg>
+          <div className="inline-flex items-center justify-center mb-4">
+            <img src="/logo-escuela.jpg" alt="Logo Kinder Garden" className="w-24 h-24 object-cover rounded-full drop-shadow-md" />
           </div>
           <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-indigo-200 tracking-tight">
             CDI Connect
@@ -99,7 +98,7 @@ export default function Login() {
         {error && (
           <div className="animate-fade-in-down flex items-center bg-red-500/10 border border-red-500/50 text-red-200 p-3 rounded-xl mb-6 text-sm text-center shadow-inner">
             <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
             {error}
           </div>
@@ -129,11 +128,11 @@ export default function Login() {
           </div>
 
           <div className="space-y-1 group">
-             <label className="block text-xs font-semibold text-indigo-200 uppercase tracking-wider ml-1 mb-2 group-focus-within:text-white transition-colors">
+            <label className="block text-xs font-semibold text-indigo-200 uppercase tracking-wider ml-1 mb-2 group-focus-within:text-white transition-colors">
               Contraseña
             </label>
             <div className="relative">
-               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <svg className="h-5 w-5 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
@@ -174,8 +173,8 @@ export default function Login() {
 
         {/* GOOGLE LOGIN */}
         <div className="flex justify-center transform transition-transform hover:scale-105 duration-300">
-           {/* Wrapping the GoogleLogin in a div helps applying styles if needed, though GoogleLogin creates an iframe */}
-           <div className="shadow-lg rounded-full overflow-hidden border border-white/10">
+          {/* Wrapping the GoogleLogin in a div helps applying styles if needed, though GoogleLogin creates an iframe */}
+          <div className="shadow-lg rounded-full overflow-hidden border border-white/10">
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={() => setError("No se pudo conectar con Google. Intenta nuevamente.")}
@@ -198,7 +197,7 @@ export default function Login() {
         </p>
 
       </div>
-      
+
       {/* Footer */}
       <div className="absolute bottom-6 w-full text-center z-10">
         <p className="text-xs text-indigo-200/50 tracking-wider">

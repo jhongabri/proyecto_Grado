@@ -26,6 +26,7 @@ import DocentesList from "../components/admin/DocentesList";
 import GruposList from "../components/admin/GruposList";
 import ExcelImportModal from "../components/admin/ExcelImportModal";
 import AsignarGrupoModal from "../components/admin/AsignarGrupoModal";
+import ManageEstudiantesModal from "../components/admin/ManageEstudiantesModal";
 
 // StatCard Component
 const StatCard = ({ title, value, Icon, color, iconColor, bgGlow }) => (
@@ -80,6 +81,9 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [showExcelModal, setShowExcelModal] = useState(false);
   const [selectedGrupoExcel, setSelectedGrupoExcel] = useState(null);
+  
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [selectedGrupoManage, setSelectedGrupoManage] = useState(null);
 
   // Modal Asignar Grupo states
   const [showAsignarModal, setShowAsignarModal] = useState(false);
@@ -425,8 +429,13 @@ export default function AdminDashboard() {
                     <GruposList
                       grupos={grupos}
                       loading={gruposLoading}
+                      onManageEstudiantes={(grupo) => {
+                        setSelectedGrupoManage(grupo);
+                        setShowManageModal(true);
+                      }}
                       onImportExcel={(grupo) => {
                         setSelectedGrupoExcel(grupo);
+                        setShowManageModal(false);
                         setShowExcelModal(true);
                       }}
                       onBack={() => setGestionSubView("cards")}
@@ -435,7 +444,6 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* Modales fuera del ternario pero dentro del Fragment */}
               {showExcelModal && selectedGrupoExcel && (
                 <ExcelImportModal
                   isOpen={showExcelModal}
@@ -445,6 +453,18 @@ export default function AdminDashboard() {
                     setSelectedGrupoExcel(null);
                   }}
                   onSuccess={refreshGrupos}
+                />
+              )}
+
+              {showManageModal && selectedGrupoManage && (
+                <ManageEstudiantesModal
+                  isOpen={showManageModal}
+                  grupo={selectedGrupoManage}
+                  onClose={() => {
+                    setShowManageModal(false);
+                    setSelectedGrupoManage(null);
+                    refreshGrupos();
+                  }}
                 />
               )}
 
