@@ -406,3 +406,79 @@ exports.eliminarEstudianteGrupo = async (req, res) => {
     res.status(500).json({ message: "Error al retirar estudiante" });
   }
 };
+// Actualizar datos de un estudiante admin
+exports.actualizarEstudianteGrupo = async (req, res) => {
+  try {
+    const { id_nino } = req.params;
+    const { nombres, apellidos, fecha_nacimiento, documento } = req.body;
+
+    if (!nombres || !apellidos || !fecha_nacimiento) {
+      return res.status(400).json({ message: "Nombres, apellidos y fecha de nacimiento son obligatorios" });
+    }
+
+    const result = await pool.query(
+      `UPDATE ninos SET nombres = $1, apellidos = $2, fecha_nacimiento = $3, documento = $4 
+       WHERE id_nino = $5 RETURNING *`,
+      [nombres, apellidos, fecha_nacimiento, documento || null, id_nino]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Estudiante no encontrado" });
+    }
+
+    res.json({ message: "Estudiante actualizado correctamente" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error al actualizar estudiante" });
+  }
+};
+
+// Vincular acudiente con niño
+exports.vincularAcudienteNino = async (req, res) => {
+  try {
+    const { id_usuario, id_nino } = req.body;
+
+    if (!id_usuario) {
+      return res.status(400).json({ message: "ID del usuario es requerido" });
+    }
+
+    // Verificar que el usuario exista y sea rol 3 (Acudiente)
+    const userResult = await pool.query(
+      "SELECT id_usuario FROM usuarios WHERE id_usuario = $1 AND id_rol = 3",
+      [id_usuario]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "Usuario acudiente no encontrado" });
+    }
+
+    // Actualizar el id_nino del usuario
+    await pool.query(
+      "UPDATE usuarios SET id_nino = $1 WHERE id_usuario = $2",
+      [id_nino || null, id_usuario]
+    );
+
+    res.json({ message: id_nino ? "Niño vinculado correctamente" : "Vínculo removido" });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al vincular niño" });
+  }
+};
+
+// Obtener acudientes sin niño (o todos los acudientes para gestión)
+exports.getAllAcudientes = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT u.id_usuario, u.nombre, u.correo, u.id_nino, n.nombres as nino_nombres, n.apellidos as nino_apellidos
+       FROM usuarios u
+       LEFT JOIN ninos n ON u.id_nino = n.id_nino
+       WHERE u.id_rol = 3
+       ORDER BY u.nombre`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error al obtener acudientes" });
+  }
+};

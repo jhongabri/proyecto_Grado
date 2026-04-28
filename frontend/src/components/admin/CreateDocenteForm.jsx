@@ -41,29 +41,29 @@ const CreateDocenteForm = ({ onSuccess, onCancel, onRefreshStats }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 max-w-sm mx-auto">
-      <div className="text-center mb-8">
-        <div className="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <PlusIcon className="w-10 h-10 text-blue-600" />
+    <div className="bg-white p-5 rounded-2xl shadow-lg border border-slate-100 max-w-sm mx-auto">
+      <div className="text-center mb-5">
+        <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-indigo-100/50">
+          <PlusIcon className="w-7 h-7 text-indigo-600" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Crear Docente</h2>
-        <p className="text-gray-500">Completa los datos del nuevo docente</p>
+        <h2 className="text-xl font-bold text-slate-800 mb-1">Crear Docente</h2>
+        <p className="text-[11px] text-slate-500 font-medium">Completa los datos del nuevo docente</p>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl mb-6 text-sm">
+        <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-xl mb-4 text-[11px] font-medium leading-relaxed">
           {error}
         </div>
       )}
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl mb-6 text-sm">
+        <div className="bg-emerald-50 border border-emerald-100 text-emerald-600 p-3 rounded-xl mb-4 text-[11px] font-medium leading-relaxed">
           {success}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-3.5">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
             Nombre Completo *
           </label>
           <input
@@ -71,13 +71,13 @@ const CreateDocenteForm = ({ onSuccess, onCancel, onRefreshStats }) => {
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-            placeholder="Juan Pérez"
+            className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+            placeholder="Ej: Juan Pérez"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
             Correo Electrónico *
           </label>
           <input
@@ -85,13 +85,13 @@ const CreateDocenteForm = ({ onSuccess, onCancel, onRefreshStats }) => {
             value={correo}
             onChange={(e) => setCorreo(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+            className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
             placeholder="juan@escuela.com"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
             Contraseña *
           </label>
           <input
@@ -99,38 +99,35 @@ const CreateDocenteForm = ({ onSuccess, onCancel, onRefreshStats }) => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+            className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
             placeholder="Mínimo 6 caracteres"
           />
         </div>
 
-        <div className="flex gap-4 pt-4">
+        <div className="flex gap-3 pt-3">
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-xl transition disabled:opacity-50"
+            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 rounded-xl transition text-xs disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition shadow-lg disabled:opacity-50 flex items-center justify-center"
+            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl transition shadow-lg shadow-indigo-100 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center text-xs"
           >
             {loading ? (
               <>
-                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Creando...
+                ...
               </>
             ) : (
-              <>
-                <PlusIcon className="w-5 h-5 mr-2" />
-                Crear Docente
-              </>
+                "Crear Docente"
             )}
           </button>
         </div>

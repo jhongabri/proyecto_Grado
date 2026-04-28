@@ -12,7 +12,8 @@ import {
   XCircleIcon,
   ExclamationTriangleIcon,
   TrashIcon,
-  UserPlusIcon
+  UserPlusIcon,
+  PencilIcon
 } from "@heroicons/react/24/outline";
 
 import {
@@ -66,6 +67,7 @@ export default function DocenteDashboard() {
   const [addingError, setAddingError] = useState("");
   const [addingSuccess, setAddingSuccess] = useState("");
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   // ====== ESTADOS LOCALES (CDI FEATURES) ======
   const [guias, setGuias] = useState([]);
@@ -77,10 +79,6 @@ export default function DocenteDashboard() {
     const savedGuias = localStorage.getItem("cdi_guias");
     if (savedGuias) {
       setGuias(JSON.parse(savedGuias));
-    }
-    const savedEstrellas = localStorage.getItem("cdi_estrellas");
-    if (savedEstrellas) {
-      setEstrellas(JSON.parse(savedEstrellas));
     }
   }, []);
 
@@ -113,6 +111,14 @@ export default function DocenteDashboard() {
     try {
       const res = await API.get(`/docente/estudiantes?fecha=${fecha}`);
       setEstudiantesAsistencia(res.data.estudiantes);
+      
+      // Sincronizar estrellas desde el backend
+      const newEstrellas = {};
+      res.data.estudiantes.forEach(est => {
+        newEstrellas[est.id_nino] = est.comportamiento_estrellas || 0;
+      });
+      setEstrellas(newEstrellas);
+
       setAsistenciaCargada(true);
     } catch (error) {
       console.error("Error loading students:", error);
@@ -203,19 +209,40 @@ export default function DocenteDashboard() {
     setAddingError("");
     setAddingSuccess("");
     try {
-      await API.post("/docente/estudiantes/manual", addForm);
-      setAddingSuccess("Estudiante agregado correctamente.");
+      if (editingId) {
+        await API.put(`/docente/estudiantes/${editingId}`, addForm);
+        setAddingSuccess("Estudiante actualizado correctamente.");
+      } else {
+        await API.post("/docente/estudiantes/manual", addForm);
+        setAddingSuccess("Estudiante agregado correctamente.");
+      }
       setAddForm({ nombres: "", apellidos: "", fecha_nacimiento: "", documento: "" });
+      setEditingId(null);
       loadEstudiantesLista();
       setTimeout(() => setAddingSuccess(""), 3000);
       
       const dashRes = await API.get("/docente/dashboard");
       setEstudiantes(dashRes.data.estudiantes);
     } catch (err) {
-      setAddingError(err.response?.data?.message || "Error al agregar estudiante.");
+      setAddingError(err.response?.data?.message || "Error al procesar estudiante.");
     } finally {
        setAdding(false);
     }
+  };
+
+  const handleEditClick = (est) => {
+    setEditingId(est.id_nino);
+    setAddForm({
+      nombres: est.nombres,
+      apellidos: est.apellidos,
+      fecha_nacimiento: est.fecha_nacimiento ? est.fecha_nacimiento.split('T')[0] : "",
+      documento: est.documento || ""
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setAddForm({ nombres: "", apellidos: "", fecha_nacimiento: "", documento: "" });
   };
 
   const handleDeleteEstudiante = async (id_matricula) => {
@@ -280,17 +307,24 @@ export default function DocenteDashboard() {
     localStorage.setItem("cdi_guias", JSON.stringify(updatedGuias));
   };
 
-  const handletoggleEstrella = (idNino) => {
+  const handletoggleEstrella = async (idNino) => {
     const actuales = estrellas[idNino] || 0;
     // Otorgar hasta 5 estrellas max, luego reinicia
     const nuevasEstrellas = actuales >= 5 ? 0 : actuales + 1;
     
-    const updatedEstrellas = {
-      ...estrellas,
-      [idNino]: nuevasEstrellas
-    };
-    setEstrellas(updatedEstrellas);
-    localStorage.setItem("cdi_estrellas", JSON.stringify(updatedEstrellas));
+    try {
+       await API.post("/docente/comportamiento", {
+         id_nino: idNino,
+         estrellas: nuevasEstrellas
+       });
+
+       setEstrellas({
+         ...estrellas,
+         [idNino]: nuevasEstrellas
+       });
+    } catch (error) {
+       console.error("Error al guardar estrellas:", error);
+    }
   };
 
   // Datos para gráficos
@@ -572,68 +606,80 @@ export default function DocenteDashboard() {
             </div>
 
             {/* Bottom Row: Manual Addition and List */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Add form */}
-              <div className="lg:col-span-1 bg-gray-50 rounded-2xl p-6 border border-gray-200 h-max">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
-                  <UserPlusIcon className="w-5 h-5 mr-2 text-indigo-500" />
-                  Agregar Manualmente
+              <div className="lg:col-span-1 bg-slate-50/50 rounded-2xl p-5 border border-slate-200 h-max shadow-sm">
+                <h3 className="text-base font-bold text-slate-800 flex items-center mb-4">
+                  <UserPlusIcon className="w-4 h-4 mr-2 text-indigo-500" />
+                  {editingId ? "Editar Alumno" : "Agregar Manualmente"}
                 </h3>
-                <form onSubmit={handleAddSubmit} className="space-y-4">
+                <form onSubmit={handleAddSubmit} className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Nombres *</label>
-                    <input required type="text" value={addForm.nombres} onChange={(e) => setAddForm({ ...addForm, nombres: e.target.value })} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 ml-1">Nombres *</label>
+                    <input required type="text" value={addForm.nombres} onChange={(e) => setAddForm({ ...addForm, nombres: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Apellidos *</label>
-                    <input required type="text" value={addForm.apellidos} onChange={(e) => setAddForm({ ...addForm, apellidos: e.target.value })} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 ml-1">Apellidos *</label>
+                    <input required type="text" value={addForm.apellidos} onChange={(e) => setAddForm({ ...addForm, apellidos: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Fecha de Nacimiento *</label>
-                    <input required type="date" value={addForm.fecha_nacimiento} onChange={(e) => setAddForm({ ...addForm, fecha_nacimiento: e.target.value })} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 ml-1">Fecha de Nacimiento *</label>
+                    <input required type="date" value={addForm.fecha_nacimiento} onChange={(e) => setAddForm({ ...addForm, fecha_nacimiento: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Documento (Opcional)</label>
-                    <input type="text" value={addForm.documento} onChange={(e) => setAddForm({ ...addForm, documento: e.target.value })} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 ml-1">Documento (Opcional)</label>
+                    <input type="text" value={addForm.documento} onChange={(e) => setAddForm({ ...addForm, documento: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all" />
                   </div>
-                  <button disabled={adding} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-xl transition text-sm disabled:opacity-50">
-                    {adding ? "Guardando..." : "Agregar al Grupo"}
-                  </button>
+                  <div className="space-y-2">
+                    <button disabled={adding} type="submit" className={`w-full ${editingId ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'} text-white font-bold py-2 rounded-xl transition shadow-lg active:scale-[0.98] disabled:opacity-50 text-xs`}>
+                      {adding ? "Guardando..." : editingId ? "Actualizar Alumno" : "Agregar al Grupo"}
+                    </button>
+                    {editingId && (
+                      <button type="button" onClick={cancelEdit} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded-xl transition text-xs">
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
                 </form>
               </div>
 
               {/* List */}
               <div className="lg:col-span-2">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Lista Actual del Grupo ({estLista.length})</h3>
+                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center justify-between">
+                   <span>Lista Actual del Grupo ({estLista.length})</span>
+                </h3>
                 
-                {addingError && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl mb-4 text-sm border border-red-200">{addingError}</div>}
-                {addingSuccess && <div className="bg-emerald-50 text-emerald-600 px-4 py-3 rounded-xl mb-4 text-sm border border-emerald-200">{addingSuccess}</div>}
+                {addingError && <div className="bg-red-50 text-red-600 px-4 py-2 rounded-xl mb-4 text-xs border border-red-200">{addingError}</div>}
+                {addingSuccess && <div className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl mb-4 text-xs border border-emerald-200">{addingSuccess}</div>}
 
                 {estListaLoading ? (
-                  <div className="flex justify-center p-10"><div className="animate-spin h-8 w-8 border-b-2 border-indigo-600 rounded-full"></div></div>
+                  <div className="flex justify-center p-10"><div className="animate-spin h-6 w-6 border-b-2 border-indigo-600 rounded-full"></div></div>
                 ) : estLista.length === 0 ? (
-                  <div className="text-center p-10 bg-gray-50 border border-gray-200 rounded-2xl">
-                    <p className="text-gray-500">No hay estudiantes en tu grupo.</p>
+                  <div className="text-center p-10 bg-slate-50 border border-slate-200 rounded-2xl border-dashed">
+                    <p className="text-xs text-slate-400">No hay estudiantes en tu grupo.</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto border border-gray-200 rounded-2xl">
-                    <table className="w-full text-left text-sm whitespace-nowrap">
-                      <thead className="bg-gray-100">
+                  <div className="overflow-x-auto border border-slate-200 rounded-2xl shadow-sm">
+                    <table className="w-full text-left text-xs whitespace-nowrap">
+                      <thead className="bg-slate-100">
                         <tr>
-                          <th className="px-4 py-3 font-semibold text-gray-600">Nombre</th>
-                          <th className="px-4 py-3 font-semibold text-gray-600">Fecha Nac.</th>
-                          <th className="px-4 py-3 font-semibold text-gray-600 text-right">Acción</th>
+                          <th className="px-4 py-2.5 font-bold text-slate-600 tracking-wide uppercase text-[9px]">Nombre</th>
+                          <th className="px-4 py-2.5 font-bold text-slate-600 tracking-wide uppercase text-[9px]">Fecha Nac.</th>
+                          <th className="px-4 py-2.5 font-bold text-slate-600 tracking-wide uppercase text-[9px] text-right">Acciones</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200 bg-white">
+                      <tbody className="divide-y divide-slate-100 bg-white">
                         {estLista.map((est) => (
-                          <tr key={est.id_matricula} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3 text-gray-800 font-medium">{est.nombres} {est.apellidos}</td>
-                            <td className="px-4 py-3 text-gray-500">
+                          <tr key={est.id_matricula} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-2 text-slate-700 font-medium">{est.nombres} {est.apellidos}</td>
+                            <td className="px-4 py-2 text-slate-500 font-medium">
                               {est.fecha_nacimiento ? new Date(est.fecha_nacimiento).toLocaleDateString() : 'N/A'}
                             </td>
-                            <td className="px-4 py-3 text-right">
-                              <button onClick={() => handleDeleteEstudiante(est.id_matricula)} className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50" title="Retirar">
+                            <td className="px-4 py-2 text-right space-x-1">
+                              <button onClick={() => handleEditClick(est)} className="text-amber-500 hover:text-amber-700 p-1.5 rounded-lg hover:bg-amber-50 transition" title="Editar">
+                                <PencilIcon className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDeleteEstudiante(est.id_matricula)} className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 transition" title="Retirar">
                                 <TrashIcon className="w-4 h-4" />
                               </button>
                             </td>

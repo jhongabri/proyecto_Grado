@@ -56,74 +56,71 @@ export default function DashboardLayout({ children, title, onDashboardClick, onG
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 border-r border-indigo-500/10 shadow-2xl lg:shadow-none
+        fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 border-r border-indigo-500/10 shadow-2xl lg:shadow-none
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Logo Area */}
-        <div className="flex items-center justify-between p-6 border-b border-white/5">
+        <div className="flex items-center justify-between p-5 border-b border-white/5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-400/30">
-               <svg className="w-6 h-6 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-400/30">
+               <svg className="w-5 h-5 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                </svg>
             </div>
             <div>
-              <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-indigo-200">Plataforma CDI</h1>
-              <p className="text-[10px] uppercase tracking-widest text-indigo-300/60 font-medium">Connect Space</p>
+              <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-indigo-200">Plataforma CDI</h1>
+              <p className="text-[9px] uppercase tracking-widest text-indigo-300/60 font-medium">Connect Space</p>
             </div>
           </div>
           <button className="lg:hidden text-indigo-200 hover:text-white" onClick={() => setSidebarOpen(false)}>
-            <XMarkIcon className="w-6 h-6" />
+            <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
 
-        {/* User Card inside Sidebar (Optional layout idea) */}
-        <div className="px-6 py-8">
-           <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 shadow-inner">
+        {/* User Card inside Sidebar */}
+        <div className="px-5 py-6">
+           <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5 shadow-inner">
              <div className="relative">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-blue-400 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-blue-400 flex items-center justify-center text-white font-bold text-base shadow-lg">
                   {usuario?.nombre?.charAt(0).toUpperCase() || "U"}
                 </div>
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-slate-800 rounded-full"></div>
+                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 border-2 border-slate-800 rounded-full"></div>
              </div>
              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">{usuario?.nombre || "Usuario Invitado"}</p>
-                <p className="text-xs text-indigo-300 truncate">
-                  {usuario?.id_rol === 1 ? "Administrador" : usuario?.id_rol === 2 ? "Docente" : "Acudiente"}
+                <p className="text-xs font-bold text-white truncate">{usuario?.nombre || "Usuario"}</p>
+                <p className="text-[10px] text-indigo-300/80 truncate font-medium uppercase tracking-tight">
+                  {usuario?.id_rol === 1 ? "Admin" : usuario?.id_rol === 2 ? "Docente" : "Acudiente"}
                 </p>
              </div>
            </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
+        <nav className="flex-1 px-3 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => (
             <button
               key={item.name}
               onClick={item.action}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 group
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-300 group
                 ${activeItem === item.name 
                   ? 'bg-indigo-500/15 text-white border border-indigo-400/20 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]' 
                   : 'text-indigo-200/70 hover:bg-white/5 hover:text-white'
                 }
               `}
             >
-              <item.icon className={`w-5 h-5 transition-colors duration-300 ${activeItem === item.name ? 'text-indigo-400' : 'text-indigo-400/50 group-hover:text-indigo-300'}`} />
-              <span className="font-medium tracking-wide text-sm">{item.name}</span>
-              {activeItem === item.name && (
-                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.8)]"></div>
-              )}
+              <item.icon className={`w-4 h-4 transition-colors duration-300 ${activeItem === item.name ? 'text-indigo-400' : 'text-indigo-400/50 group-hover:text-indigo-300'}`} />
+              <span className="font-semibold tracking-tight text-xs">{item.name}</span>
             </button>
           ))}
         </nav>
 
         {/* Logout */}
-        <div className="p-4 border-t border-white/5 m-4 bg-red-500/10 rounded-2xl">
+        <div className="p-3 border-t border-white/5 m-3 bg-red-500/5 rounded-xl">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 py-3 rounded-xl text-sm font-semibold transition-all duration-300"
+            className="w-full flex items-center justify-center gap-2 text-red-400/80 hover:text-red-300 hover:bg-red-500/10 py-2.5 rounded-lg text-xs font-bold transition-all duration-300"
           >
-            <ArrowRightOnRectangleIcon className="w-5 h-5" />
+            <ArrowRightOnRectangleIcon className="w-4 h-4" />
             Cerrar Sesión
           </button>
         </div>
@@ -135,36 +132,36 @@ export default function DashboardLayout({ children, title, onDashboardClick, onG
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoOTksIDEwMiwgMjQxLCAwLjA1KSIvPjwvc3ZnPg==')] opacity-50 pointer-events-none z-0"></div>
 
         {/* Header / Navbar - Glassmorphism */}
-        <header className="sticky top-0 z-30 bg-white/70 backdrop-blur-lg border-b border-indigo-100/50 shadow-sm px-6 py-4 flex justify-between items-center transition-all duration-300">
-          <div className="flex items-center gap-4">
+        <header className="sticky top-0 z-30 bg-white/70 backdrop-blur-lg border-b border-indigo-100/50 shadow-sm px-6 py-3 flex justify-between items-center transition-all duration-300">
+          <div className="flex items-center gap-3">
             <button 
-              className="lg:hidden p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              className="lg:hidden p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                onClick={() => setSidebarOpen(true)}
             >
-              <Bars3Icon className="w-6 h-6" />
+              <Bars3Icon className="w-5 h-5" />
             </button>
-            <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-indigo-900 tracking-tight">
+            <h2 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-indigo-900 tracking-tight">
               {title}
             </h2>
           </div>
 
-          <div className="flex items-center space-x-5">
+          <div className="flex items-center space-x-4">
             {/* Notification Bell */}
             <button 
               onClick={() => setShowNotificaciones(!showNotificaciones)}
-              className="relative p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all duration-300 group"
+              className="relative p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all duration-300 group"
             >
-              <BellAlertIcon className="w-6 h-6 group-hover:animate-wiggle" />
+              <BellAlertIcon className="w-5 h-5 group-hover:animate-wiggle" />
               {anuncios.length > 0 && (
-                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
               )}
             </button>
           </div>
         </header>
 
         {/* Main View Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 z-10 scroll-smooth">
-           <div className="max-w-7xl mx-auto pb-12">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 z-10 scroll-smooth">
+           <div className="max-w-7xl mx-auto pb-8">
              {children}
            </div>
         </main>

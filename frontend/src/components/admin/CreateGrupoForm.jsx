@@ -55,29 +55,29 @@ const CreateGrupoForm = ({ onSuccess, onCancel, onRefreshGrupos }) => {
   };
 
   return (
-<div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 max-w-md mx-auto">
-      <div className="text-center mb-8">
-        <div className="w-20 h-20 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <CalendarIcon className="w-10 h-10 text-purple-600" />
+<div className="bg-white p-5 rounded-2xl shadow-lg border border-slate-100 max-w-md mx-auto">
+      <div className="text-center mb-5">
+        <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-purple-100/50">
+          <CalendarIcon className="w-7 h-7 text-purple-600" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Crear Grupo</h2>
-        <p className="text-gray-500">Define el grupo de estudiantes</p>
+        <h2 className="text-xl font-bold text-slate-800 mb-1">Crear Grupo</h2>
+        <p className="text-[11px] text-slate-500 font-medium">Define el grupo de estudiantes</p>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl mb-6 text-sm">
+        <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-xl mb-4 text-[11px] font-medium leading-relaxed">
           {error}
         </div>
       )}
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl mb-6 text-sm">
+        <div className="bg-emerald-50 border border-emerald-100 text-emerald-600 p-3 rounded-xl mb-4 text-[11px] font-medium leading-relaxed">
           {success}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
         <div className="md:col-span-2">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
             Nombre del Grupo *
           </label>
           <input
@@ -85,13 +85,13 @@ const CreateGrupoForm = ({ onSuccess, onCancel, onRefreshGrupos }) => {
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+            className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all outline-none"
             placeholder="Ej: Maternal A"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
             Edad Mínima *
           </label>
           <input
@@ -101,13 +101,13 @@ const CreateGrupoForm = ({ onSuccess, onCancel, onRefreshGrupos }) => {
             value={edadMin}
             onChange={(e) => setEdadMin(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+            className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all outline-none"
             placeholder="2"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
             Edad Máxima *
           </label>
           <input
@@ -117,51 +117,48 @@ const CreateGrupoForm = ({ onSuccess, onCancel, onRefreshGrupos }) => {
             value={edadMax}
             onChange={(e) => setEdadMax(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+            className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all outline-none"
             placeholder="4"
           />
         </div>
 
         <div className="md:col-span-2">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
             Horario (opcional)
           </label>
           <input
             type="text"
             value={horario}
             onChange={(e) => setHorario(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+            className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all outline-none"
             placeholder="Ej: 8:00am - 12:00pm"
           />
         </div>
 
-        <div className="md:col-span-2 flex gap-4 pt-4">
+        <div className="md:col-span-2 flex gap-3 pt-3">
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-xl transition disabled:opacity-50"
+            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 rounded-xl transition text-xs disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-xl transition shadow-lg disabled:opacity-50 flex items-center justify-center"
+            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl transition shadow-lg shadow-purple-100 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center text-xs"
           >
             {loading ? (
               <>
-                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Creando...
+                ...
               </>
             ) : (
-              <>
-                <PlusIcon className="w-5 h-5 mr-2" />
-                Crear Grupo
-              </>
+                "Crear Grupo"
             )}
           </button>
         </div>

@@ -10,7 +10,10 @@ const {
   getEstudiantesPorGrupo,
   importarEstudiantesAdmin,
   agregarEstudianteGrupo,
-  eliminarEstudianteGrupo
+  eliminarEstudianteGrupo,
+  actualizarEstudianteGrupo,
+  vincularAcudienteNino,
+  getAllAcudientes
 } = require("../controllers/admin.controller");
 
 // 👇 Importación correcta
@@ -25,6 +28,10 @@ router.post("/docentes", verifyToken, hasRole(1), createDocente);
 // Obtener todos los docentes
 router.get("/docentes", verifyToken, hasRole(1), getAllDocentes);
 
+// Obtener acudientes
+router.get("/acudientes", verifyToken, hasRole(1), getAllAcudientes);
+router.put("/acudientes/vincular", verifyToken, hasRole(1), vincularAcudienteNino);
+
 // Obtener todos los grupos
 router.get("/grupos", verifyToken, hasRole(1), getAllGrupos);
 
@@ -36,6 +43,9 @@ router.post("/grupos/:id_grupo/estudiantes", verifyToken, hasRole(1), agregarEst
 
 // Eliminar estudiante de un grupo (borra matrícula)
 router.delete("/grupos/estudiantes/:id_matricula", verifyToken, hasRole(1), eliminarEstudianteGrupo);
+
+// Actualizar estudiante
+router.put("/grupos/estudiantes/:id_nino", verifyToken, hasRole(1), actualizarEstudianteGrupo);
 
 // Importar Excel a grupo
 const multer = require("multer");

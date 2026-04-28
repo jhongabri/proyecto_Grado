@@ -83,58 +83,44 @@ const ExcelImportModal = ({
   if (!isOpen || !grupo) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all">
+      <div className="bg-white rounded-2xl p-5 w-full max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-100">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-5">
           <div className="flex items-center">
-            <CloudArrowUpIcon className="w-12 h-12 text-emerald-600 mr-4" />
+            <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mr-3 border border-emerald-100">
+              <CloudArrowUpIcon className="w-6 h-6 text-emerald-600" />
+            </div>
             <div>
-              <h2 className="text-3xl font-bold text-gray-900">Importar Estudiantes</h2>
-              <p className="text-lg text-gray-600">{grupo.nombre}</p>
+              <h2 className="text-lg font-bold text-slate-800">Importar Estudiantes</h2>
+              <p className="text-xs text-slate-500 font-medium">{grupo.nombre}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-2xl text-gray-500 hover:text-gray-900 transition"
+            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition"
           >
-            <XMarkIcon className="w-7 h-7" />
+            <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
 
         {/* Mensajes */}
         {importError && (
-          <div className="bg-red-50 border-2 border-red-200 text-red-800 p-6 rounded-2xl mb-8">
-            <div className="flex items-start">
-              <svg className="w-6 h-6 text-red-500 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <h4 className="font-semibold text-lg mb-1">Error en importación</h4>
-                <p>{importError}</p>
-              </div>
-            </div>
+          <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-xl mb-4 text-[11px] font-medium leading-relaxed">
+             {importError}
           </div>
         )}
         {importSuccess && (
-          <div className="bg-emerald-50 border-2 border-emerald-200 text-emerald-800 p-6 rounded-2xl mb-8">
-            <div className="flex items-start">
-              <svg className="w-6 h-6 text-emerald-500 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <h4 className="font-semibold text-lg mb-1">¡Importación exitosa!</h4>
-                <p>{importSuccess}</p>
-              </div>
-            </div>
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-600 p-3 rounded-xl mb-4 text-[11px] font-medium leading-relaxed">
+            {importSuccess}
           </div>
         )}
 
         {/* Upload Area */}
-        <form onSubmit={handleImport} className="mb-12">
+        <form onSubmit={handleImport} className="mb-6">
           <div 
-            className={`border-3 border-dashed rounded-3xl p-12 text-center transition-all duration-300 hover:border-emerald-400 ${
-              file ? 'border-emerald-400 bg-emerald-50' : 'border-gray-300 hover:border-gray-400 bg-gray-50'
+            className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-300 ${
+              file ? 'border-emerald-400 bg-emerald-50/50' : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'
             }`}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
@@ -148,18 +134,17 @@ const ExcelImportModal = ({
               required
             />
             <label htmlFor="excel-file" className="cursor-pointer block">
-              <CloudArrowUpIcon className={`w-20 h-20 mx-auto mb-6 ${file ? 'text-emerald-600' : 'text-gray-400'}`} />
+              <CloudArrowUpIcon className={`w-12 h-12 mx-auto mb-3 ${file ? 'text-emerald-600' : 'text-slate-300'}`} />
               
               {file ? (
                 <div>
-                  <p className="text-2xl font-bold text-emerald-600 mb-2">{file.name}</p>
-                  <p className="text-lg text-gray-600 mb-6">Archivo listo para importar</p>
+                  <p className="text-sm font-bold text-emerald-600 mb-0.5 mt-2 truncate max-w-xs mx-auto">{file.name}</p>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Listo para procesar</p>
                 </div>
               ) : (
                 <div>
-                  <p className="text-2xl font-bold text-gray-900 mb-2">Arrastra tu archivo Excel</p>
-                  <p className="text-xl text-gray-500 mb-4">o</p>
-                  <p className="text-lg text-gray-600 mb-6">Columnas: nombre, apellido, codigo, edad</p>
+                  <p className="text-sm font-bold text-slate-800 mb-0.5">Arrastra tu archivo Excel</p>
+                  <p className="text-xs text-slate-500">Columnas: nombre, apellido, codigo, edad</p>
                 </div>
               )}
             </label>
@@ -168,20 +153,14 @@ const ExcelImportModal = ({
           <button
             type="submit"
             disabled={!file || uploading || estudiantesLoading}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold py-4 px-8 rounded-2xl transition shadow-xl text-lg flex items-center justify-center mx-auto disabled:cursor-not-allowed"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold py-2.5 rounded-xl transition shadow-lg shadow-emerald-100 text-xs flex items-center justify-center mt-4 disabled:cursor-not-allowed"
           >
             {uploading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-4 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Importando estudiantes...
-              </>
+               "Importando..."
             ) : (
               <>
-                <CloudArrowUpIcon className="w-6 h-6 mr-3" />
-                Importar {file ? 'archivo' : 'Excel'} a {grupo.nombre}
+                <CloudArrowUpIcon className="w-4 h-4 mr-2" />
+                Importar a {grupo.nombre}
               </>
             )}
           </button>
@@ -189,51 +168,40 @@ const ExcelImportModal = ({
 
         {/* Estudiantes Preview */}
         <div>
-          <h4 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+          <h4 className="text-sm font-bold text-slate-800 mb-3 flex items-center">
             Estudiantes Actuales 
-            <span className="ml-3 px-4 py-2 bg-indigo-100 text-indigo-800 text-lg font-bold rounded-2xl">
+            <span className="ml-2 px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[11px] font-bold rounded-lg border border-indigo-100">
               {estudiantes.length}
             </span>
           </h4>
           
           {estudiantesLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-              <span className="ml-4 text-lg text-gray-500">Cargando estudiantes...</span>
-            </div>
+            <div className="flex justify-center py-6"><div className="animate-spin h-6 w-6 border-b-2 border-indigo-600 rounded-full"></div></div>
           ) : estudiantes.length === 0 ? (
-            <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-3xl">
-              <UsersIcon className="w-20 h-20 text-gray-300 mx-auto mb-6" />
-              <h5 className="text-xl font-semibold text-gray-900 mb-2">Sin estudiantes</h5>
-              <p className="text-gray-500 text-lg">Importa tu Excel para agregar la primera lista</p>
+            <div className="text-center py-8 border-2 border-dashed border-slate-100 rounded-2xl">
+              <UsersIcon className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+              <p className="text-xs text-slate-400">Sin estudiantes</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-gray-200">
-              <table className="w-full">
-                <thead className="bg-gray-50">
+            <div className="overflow-x-auto rounded-xl border border-slate-100 shadow-sm">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">Nombre</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">Apellido</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">Código</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">Edad</th>
+                    <th className="px-4 py-2 font-bold text-slate-600 uppercase text-[9px] tracking-wider">Nombre</th>
+                    <th className="px-4 py-2 font-bold text-slate-600 uppercase text-[9px] tracking-wider text-center">Código</th>
+                    <th className="px-4 py-2 font-bold text-slate-600 uppercase text-[9px] tracking-wider text-right">Edad</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {estudiantes.slice(0, 10).map((estudiante, index) => ( // Show first 10
-                    <tr key={estudiante.id_matricula || index} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 font-medium text-gray-900">{estudiante.nombres}</td>
-                      <td className="px-6 py-4 text-gray-700">{estudiante.apellidos}</td>
-                      <td className="px-6 py-4 font-mono text-sm bg-gray-100 px-3 py-1 rounded-full">{estudiante.codigo}</td>
-                      <td className="px-6 py-4 font-semibold text-indigo-600">{estudiante.edad}</td>
+                <tbody className="divide-y divide-slate-50">
+                  {estudiantes.slice(0, 10).map((estudiante, index) => (
+                    <tr key={estudiante.id_matricula || index} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-2 font-medium text-slate-700">{estudiante.nombres} {estudiante.apellidos}</td>
+                      <td className="px-4 py-2 text-center">
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md font-mono text-[10px]">{estudiante.codigo}</span>
+                      </td>
+                      <td className="px-4 py-2 text-right font-bold text-indigo-600">{estudiante.edad}</td>
                     </tr>
                   ))}
-                  {estudiantes.length > 10 && (
-                    <tr>
-                      <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
-                        ... y {estudiantes.length - 10} más
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>

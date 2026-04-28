@@ -54,3 +54,6 @@ app.use("/api/admin", adminRoutes);
 
 const docenteRoutes = require("./routes/docente.routes");
 app.use("/api/docente", docenteRoutes);
+
+const acudienteRoutes = require("./routes/acudiente.routes");
+app.use("/api/acudiente", acudienteRoutes);

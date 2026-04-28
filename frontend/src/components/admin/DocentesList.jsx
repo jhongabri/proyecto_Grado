@@ -9,19 +9,19 @@ const DocentesList = ({
   loading 
 }) => {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold text-gray-900 flex items-center">
-          <svg className="w-7 h-7 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base font-bold text-slate-800 flex items-center">
+          <svg className="w-6 h-6 mr-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
           </svg>
-          Lista de Docentes ({docentes.length})
+          Docentes ({docentes.length})
         </h3>
         <button
           onClick={onBack}
-          className="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-lg transition"
+          className="inline-flex items-center px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition"
         >
-          ← Volver
+          Volver
         </button>
       </div>
 
@@ -49,13 +49,13 @@ const DocentesList = ({
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-slate-100">
               {docentes.map((docente) => (
-                <tr key={docente.id_usuario} className="hover:bg-gray-50">
-  <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">
+                <tr key={docente.id_usuario} className="hover:bg-slate-50 transition-colors">
+  <td className="px-4 py-2.5 whitespace-nowrap font-bold text-slate-800 text-xs">
                     {docente.nombre}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                  <td className="px-4 py-2.5 whitespace-nowrap text-xs text-slate-600 font-medium">
                     {docente.correo}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">

@@ -27,26 +27,27 @@ import GruposList from "../components/admin/GruposList";
 import ExcelImportModal from "../components/admin/ExcelImportModal";
 import AsignarGrupoModal from "../components/admin/AsignarGrupoModal";
 import ManageEstudiantesModal from "../components/admin/ManageEstudiantesModal";
+import GestionAcudientes from "../components/admin/GestionAcudientes";
 
 // StatCard Component
 const StatCard = ({ title, value, Icon, color, iconColor, bgGlow }) => (
-  <div className="relative group bg-white p-7 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 hover:shadow-[0_8px_40px_rgba(79,70,229,0.12)] transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-default">
+  <div className="relative group bg-white p-5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 hover:shadow-[0_8px_40px_rgba(79,70,229,0.12)] transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-default">
     {/* Decorative background glow */}
-    <div className={`absolute -right-10 -top-10 w-32 h-32 ${bgGlow} rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-500`}></div>
+    <div className={`absolute -right-8 -top-8 w-24 h-24 ${bgGlow} rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-500`}></div>
     
     <div className="flex items-center justify-between relative z-10">
-      <div className={`p-3.5 rounded-2xl group-hover:scale-110 transition-transform duration-300 shadow-sm ${bgGlow.replace('bg-', 'bg-opacity-10 bg-')}`}>
-        <Icon className={`w-8 h-8 ${iconColor}`} />
+      <div className={`p-2.5 rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-sm ${bgGlow.replace('bg-', 'bg-opacity-10 bg-')}`}>
+        <Icon className={`w-6 h-6 ${iconColor}`} />
       </div>
-      <div className="flex h-3 w-3 relative">
+      <div className="flex h-2 w-2 relative">
          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-         <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+         <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
       </div>
     </div>
-    <div className="mt-5 relative z-10">
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{title}</p>
-      <div className="flex items-baseline gap-2 mt-1">
-         <p className={`text-4xl font-extrabold ${color} tracking-tight`}>{value}</p>
+    <div className="mt-3 relative z-10">
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</p>
+      <div className="flex items-baseline gap-2 mt-0.5">
+         <p className={`text-3xl font-black ${color} tracking-tight`}>{value}</p>
       </div>
     </div>
   </div>
@@ -317,16 +318,16 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 mb-6">
-                <div className="flex items-center justify-between mb-8">
+              <div className="bg-white p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 mb-6">
+                <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-indigo-900">Resumen General</h3>
-                    <p className="text-sm text-slate-500 mt-1">Distribución de usuarios en la plataforma</p>
+                    <h3 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-indigo-900 leading-none">Resumen General</h3>
+                    <p className="text-[11px] text-slate-500 mt-1">Distribución de usuarios en la plataforma</p>
                   </div>
                 </div>
-                <div className="w-full h-80">
+                <div className="w-full h-64">
                   <ResponsiveContainer>
-                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorCantidad" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
@@ -392,6 +393,7 @@ export default function AdminDashboard() {
                       onViewDocentes={() => setGestionSubView("docentes")}
                       onViewGrupos={() => setGestionSubView("grupos")}
                       onReportes={() => setGestionSubView("reportes")}
+                      onViewAcudientes={() => setGestionSubView("acudientes")}
                       docentesCount={docentes.length}
                       gruposCount={grupos.length}
                     />
@@ -438,6 +440,12 @@ export default function AdminDashboard() {
                         setShowManageModal(false);
                         setShowExcelModal(true);
                       }}
+                      onBack={() => setGestionSubView("cards")}
+                    />
+                  )}
+
+                  {gestionSubView === "acudientes" && (
+                    <GestionAcudientes
                       onBack={() => setGestionSubView("cards")}
                     />
                   )}

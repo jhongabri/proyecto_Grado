@@ -275,10 +275,12 @@ exports.getEstudiantesAsistencia = async (req, res) => {
         n.apellidos,
         n.fecha_nacimiento,
         a.estado as asistencia_estado,
-        a.observacion as asistencia_observacion
+        a.observacion as asistencia_observacion,
+        c.estrellas as comportamiento_estrellas
        FROM matriculas m
        INNER JOIN ninos n ON m.id_nino = n.id_nino
        LEFT JOIN asistencia a ON m.id_matricula = a.id_matricula AND a.fecha = $1
+       LEFT JOIN comportamiento c ON n.id_nino = c.id_nino AND c.fecha = $1
        WHERE m.id_grupo = $2 AND m.estado = TRUE
        ORDER BY n.nombres`,
       [fecha, idGrupo]
@@ -431,13 +433,13 @@ exports.actualizarReporte = async (req, res) => {
 // Obtener lista directa de estudiantes para gestión
 exports.getEstudiantesLista = async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const grupo = await pool.query(
-      "SELECT id_grupo FROM docentes_grupos WHERE id_docente = $1 LIMIT 1",
+      "SELECT id_grupo FROM usuarios WHERE id_usuario = $1 AND id_rol = 2",
       [userId]
     );
 
-    if (grupo.rows.length === 0) {
+    if (grupo.rows.length === 0 || !grupo.rows[0].id_grupo) {
       return res.json([]);
     }
 
@@ -462,7 +464,7 @@ exports.getEstudiantesLista = async (req, res) => {
 // Agregar estudiante manual
 exports.agregarEstudianteManual = async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const { nombres, apellidos, fecha_nacimiento, documento } = req.body;
 
     if (!nombres || !apellidos || !fecha_nacimiento) {
@@ -470,10 +472,10 @@ exports.agregarEstudianteManual = async (req, res) => {
     }
 
     const grupo = await pool.query(
-      "SELECT id_grupo FROM docentes_grupos WHERE id_docente = $1 LIMIT 1",
+      "SELECT id_grupo FROM usuarios WHERE id_usuario = $1 AND id_rol = 2",
       [userId]
     );
-    if (grupo.rows.length === 0) {
+    if (grupo.rows.length === 0 || !grupo.rows[0].id_grupo) {
       return res.status(404).json({ message: "No tienes un grupo asignado" });
     }
     const idGrupo = grupo.rows[0].id_grupo;
@@ -521,17 +523,60 @@ exports.agregarEstudianteManual = async (req, res) => {
   }
 };
 
+// Actualizar datos de un estudiante
+exports.actualizarEstudianteManual = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id_nino } = req.params;
+    const { nombres, apellidos, fecha_nacimiento, documento } = req.body;
+
+    if (!nombres || !apellidos || !fecha_nacimiento) {
+      return res.status(400).json({ message: "Nombres, apellidos y fecha de nacimiento son obligatorios" });
+    }
+
+    // Verificar que el docente tenga grupo asignado
+    const grupo = await pool.query(
+      "SELECT id_grupo FROM usuarios WHERE id_usuario = $1 AND id_rol = 2",
+      [userId]
+    );
+    if (grupo.rows.length === 0 || !grupo.rows[0].id_grupo) {
+      return res.status(403).json({ message: "No autorizado" });
+    }
+
+    // Verificar que el niño pertenezca al grupo del docente
+    const checkMat = await pool.query(
+      "SELECT m.id_matricula FROM matriculas m WHERE m.id_nino = $1 AND m.id_grupo = $2 AND m.estado = TRUE",
+      [id_nino, grupo.rows[0].id_grupo]
+    );
+    if (checkMat.rows.length === 0) {
+      return res.status(404).json({ message: "Estudiante no encontrado en tu grupo" });
+    }
+
+    await pool.query(
+      `UPDATE ninos SET nombres = $1, apellidos = $2, fecha_nacimiento = $3, documento = $4 WHERE id_nino = $5`,
+      [nombres, apellidos, fecha_nacimiento, documento || null, id_nino]
+    );
+
+    res.json({ message: "Estudiante actualizado correctamente" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error al actualizar estudiante" });
+  }
+};
+
 // Retirar estudiante manual
 exports.eliminarEstudianteManual = async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const { id_matricula } = req.params;
 
     const grupo = await pool.query(
-      "SELECT id_grupo FROM docentes_grupos WHERE id_docente = $1 LIMIT 1",
+      "SELECT id_grupo FROM usuarios WHERE id_usuario = $1 AND id_rol = 2",
       [userId]
     );
-    if (grupo.rows.length === 0) return res.status(403).json({ message: "No autorizado" });
+    if (grupo.rows.length === 0 || !grupo.rows[0].id_grupo) {
+      return res.status(403).json({ message: "No autorizado" });
+    }
     
     const checkMat = await pool.query(
       "SELECT id_matricula FROM matriculas WHERE id_matricula = $1 AND id_grupo = $2",
@@ -545,6 +590,37 @@ exports.eliminarEstudianteManual = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error al retirar estudiante" });
+  }
+};
+
+// Registrar comportamiento (estrellas)
+exports.registrarComportamiento = async (req, res) => {
+  try {
+    const idDocente = req.user.id;
+    const { id_nino, estrellas, observacion } = req.body;
+
+    if (!id_nino) {
+      return res.status(400).json({ message: "ID del niño es requerido" });
+    }
+
+    // Insertar o actualizar comportamiento para el día de hoy
+    const result = await pool.query(
+      `INSERT INTO comportamiento (id_nino, estrellas, id_docente, observacion, fecha)
+       VALUES ($1, $2, $3, $4, CURRENT_DATE)
+       ON CONFLICT (id_nino, fecha) DO UPDATE 
+       SET estrellas = EXCLUDED.estrellas, observacion = EXCLUDED.observacion
+       RETURNING *`,
+      [id_nino, estrellas || 0, idDocente, observacion || ""]
+    );
+
+    res.json({
+      message: "Comportamiento registrado",
+      comportamiento: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Error Behavior:", error);
+    res.status(500).json({ message: "Error al registrar comportamiento" });
   }
 };
 
