@@ -67,14 +67,21 @@ const DocentesList = ({
                       {docente.estado ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                    {docente.nombre_grupo ? (
-                      <span className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                        {docente.nombre_grupo}
-                      </span>
-                    ) : (
-                      <span className="text-gray-500 text-xs font-medium">Sin asignar</span>
-                    )}
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
+                    <div className="flex flex-wrap justify-center gap-1.5 max-w-[200px] mx-auto">
+                      {docente.grupos && docente.grupos.length > 0 ? (
+                        docente.grupos.map((g, idx) => (
+                          <span 
+                            key={idx} 
+                            className="inline-flex items-center px-2.5 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-lg border border-indigo-200"
+                          >
+                            {g.nombre}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Sin asignar</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-medium">
                     <button

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import DashboardLayout from "../layouts/DashboardLayout";
 import API from "../api/axios";
+import EvaluacionModal from "../components/docente/EvaluacionModal";
 
 import {
   AcademicCapIcon,
@@ -37,7 +38,8 @@ export default function DocenteDashboard() {
   const [gestionSubView, setGestionSubView] = useState("asistencia"); // asistencia, estudiantes, tareas
   
   // Datos del dashboard
-  const [grupo, setGrupo] = useState(null);
+  const [grupos, setGrupos] = useState([]);
+  const [grupoActivo, setGrupoActivo] = useState(null);
   const [estudiantes, setEstudiantes] = useState([]);
   const [estadisticas, setEstadisticas] = useState({});
   const [reportes, setReportes] = useState([]);
@@ -46,6 +48,7 @@ export default function DocenteDashboard() {
   const [fechaAsistencia, setFechaAsistencia] = useState(new Date().toISOString().split('T')[0]);
   const [estudiantesAsistencia, setEstudiantesAsistencia] = useState([]);
   const [asistenciaCargada, setAsistenciaCargada] = useState(false);
+  const [asistenciaLoading, setAsistenciaLoading] = useState(false);
   
   // Estados para importar Excel
   const [file, setFile] = useState(null);
@@ -69,18 +72,17 @@ export default function DocenteDashboard() {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  // ====== ESTADOS LOCALES (CDI FEATURES) ======
-  const [guias, setGuias] = useState([]);
-  const [nuevaGuia, setNuevaGuia] = useState({ titulo: "", descripcion: "", fecha_entrega: "" });
+  // ====== ESTADOS TAREAS ======
+  const [tareas, setTareas] = useState([]);
+  const [tareasLoading, setTareasLoading] = useState(false);
+  const [nuevaTarea, setNuevaTarea] = useState({ titulo: "", descripcion: "", fecha_entrega: "", recurso_url: "" });
   const [estrellas, setEstrellas] = useState({}); // { id_nino: cantidad }
 
-  // Cargar datos locales al montar
-  useEffect(() => {
-    const savedGuias = localStorage.getItem("cdi_guias");
-    if (savedGuias) {
-      setGuias(JSON.parse(savedGuias));
-    }
-  }, []);
+  // ====== ESTADOS EVALUACIÓN ======
+  const [evaluaciones, setEvaluaciones] = useState([]);
+  const [evalLoading, setEvalLoading] = useState(false);
+  const [evalModalOpen, setEvalModalOpen] = useState(false);
+  const [evalEstudiante, setEvalEstudiante] = useState(null);
 
   // Handlers para el sidebar
   const handleDashboardClick = () => setActiveView("dashboard");
@@ -88,40 +90,52 @@ export default function DocenteDashboard() {
   const handleReportesClick = () => setActiveView("reportes");
 
   // Cargar datos del dashboard
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await API.get("/docente/dashboard");
-        setGrupo(res.data.grupo);
-        setEstudiantes(res.data.estudiantes);
-        setEstadisticas(res.data.estadisticas);
-        setReportes(res.data.reportes);
-      } catch (error) {
-        console.error("Error fetching dashboard:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchDashboardData = async (idGrupo = null) => {
+    try {
+      const url = idGrupo ? `/docente/dashboard?id_grupo=${idGrupo}` : "/docente/dashboard";
+      const res = await API.get(url);
+      setGrupos(res.data.grupos || []);
+      setGrupoActivo(res.data.grupoActivo);
+      setEstudiantes(res.data.estudiantes);
+      setEstadisticas(res.data.estadisticas);
+      setReportes(res.data.reportes);
+    } catch (error) {
+      console.error("Error fetching dashboard:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchData();
+  useEffect(() => {
+    fetchDashboardData();
   }, []);
+
+  // Cambiar de grupo activo
+  const handleGrupoChange = (e) => {
+    const id = e.target.value;
+    setLoading(true);
+    setAsistenciaCargada(false);
+    fetchDashboardData(id);
+  };
 
   // Cargar estudiantes para asistencia
   const loadEstudiantesAsistencia = async (fecha) => {
+    if (!grupoActivo) return;
+    setAsistenciaLoading(true);
     try {
-      const res = await API.get(`/docente/estudiantes?fecha=${fecha}`);
+      const res = await API.get(`/docente/estudiantes?fecha=${fecha}&id_grupo=${grupoActivo.id_grupo}`);
       setEstudiantesAsistencia(res.data.estudiantes);
       
-      // Sincronizar estrellas desde el backend
       const newEstrellas = {};
       res.data.estudiantes.forEach(est => {
         newEstrellas[est.id_nino] = est.comportamiento_estrellas || 0;
       });
       setEstrellas(newEstrellas);
-
       setAsistenciaCargada(true);
     } catch (error) {
       console.error("Error loading students:", error);
+    } finally {
+      setAsistenciaLoading(false);
     }
   };
 
@@ -141,10 +155,13 @@ export default function DocenteDashboard() {
         fecha: fechaAsistencia,
         estado,
         observacion: "",
+        id_grupo: grupoActivo.id_grupo
       });
       
-      // Actualizar la lista
-      loadEstudiantesAsistencia(fechaAsistencia);
+      // Actualizar localmente para feedback inmediato
+      setEstudiantesAsistencia(prev => 
+        prev.map(est => est.id_matricula === idMatricula ? { ...est, asistencia_estado: estado } : est)
+      );
     } catch (error) {
       console.error("Error registering attendance:", error);
     }
@@ -159,17 +176,15 @@ export default function DocenteDashboard() {
       return;
     }
 
-    if (!grupo) {
+    if (!grupoActivo) {
       setImportResult({ errores: ["No tienes un grupo asignado"] });
       return;
     }
 
     setImporting(true);
-    setImportResult(null);
-
     const formData = new FormData();
     formData.append("archivo", file);
-    formData.append("id_grupo", grupo.id_grupo);
+    formData.append("id_grupo", grupoActivo.id_grupo);
 
     try {
       const res = await API.post("/docente/importar", formData);
@@ -287,25 +302,70 @@ export default function DocenteDashboard() {
     }
   };
 
-  // ====== HANDLERS LOCALES (CDI FEATURES) ======
-  const handleCrearGuia = (e) => {
-    e.preventDefault();
-    const nueva = {
-      ...nuevaGuia,
-      id: Date.now(),
-      fecha_creacion: new Date().toISOString()
-    };
-    const updatedGuias = [nueva, ...guias];
-    setGuias(updatedGuias);
-    localStorage.setItem("cdi_guias", JSON.stringify(updatedGuias));
-    setNuevaGuia({ titulo: "", descripcion: "", fecha_entrega: "" });
+  // ====== TAREAS BACKEND HANDLERS ======
+  const loadTareas = async () => {
+    if (!grupoActivo) return;
+    setTareasLoading(true);
+    try {
+      const res = await API.get(`/docente/tareas?id_grupo=${grupoActivo.id_grupo}`);
+      setTareas(res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTareasLoading(false);
+    }
   };
 
-  const handleEliminarGuia = (id) => {
-    const updatedGuias = guias.filter(g => g.id !== id);
-    setGuias(updatedGuias);
-    localStorage.setItem("cdi_guias", JSON.stringify(updatedGuias));
+  const handleCrearTarea = async (e) => {
+    e.preventDefault();
+    if (!grupoActivo) return;
+    try {
+      await API.post("/docente/tareas", {
+        ...nuevaTarea,
+        id_grupo: grupoActivo.id_grupo
+      });
+      setNuevaTarea({ titulo: "", descripcion: "", fecha_entrega: "", recurso_url: "" });
+      loadTareas();
+    } catch (error) {
+      console.error(error);
+    }
   };
+
+  const handleEliminarTarea = async (id) => {
+    if (!window.confirm("¿Eliminar esta tarea?")) return;
+    try {
+      await API.delete(`/docente/tareas/${id}`);
+      loadTareas();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    if (activeView === "gestion" && gestionSubView === "tareas") {
+      loadTareas();
+    }
+  }, [activeView, gestionSubView, grupoActivo]);
+
+  // Cargar evaluaciones del grupo
+  const loadEvaluaciones = async () => {
+    if (!grupoActivo) return;
+    setEvalLoading(true);
+    try {
+      const res = await API.get(`/docente/evaluaciones?id_grupo=${grupoActivo.id_grupo}`);
+      setEvaluaciones(res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setEvalLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeView === "gestion" && gestionSubView === "evaluacion") {
+      loadEvaluaciones();
+    }
+  }, [activeView, gestionSubView, grupoActivo]);
 
   const handletoggleEstrella = async (idNino) => {
     const actuales = estrellas[idNino] || 0;
@@ -346,11 +406,24 @@ export default function DocenteDashboard() {
   return (
     <DashboardLayout
       title={
-        activeView === "gestion"
-          ? "Gestión - " + (grupo?.nombre || "Mi Grupo")
-          : activeView === "reportes"
-          ? "Reportes y Quejas"
-          : "Dashboard - " + (grupo?.nombre || "Mi Grupo")
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <span>
+            {activeView === "gestion" ? "Gestión" : activeView === "reportes" ? "Reportes" : "Dashboard"}
+          </span>
+          {grupos.length > 0 && (
+            <select 
+              value={grupoActivo?.id_grupo || ""} 
+              onChange={handleGrupoChange}
+              className="text-sm bg-white/10 border border-white/20 rounded-lg px-3 py-1 text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+            >
+              {grupos.map(g => (
+                <option key={g.id_grupo} value={g.id_grupo} className="text-gray-800">
+                  {g.nombre}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       }
       onDashboardClick={handleDashboardClick}
       onGestionClick={handleGestionClick}
@@ -359,23 +432,27 @@ export default function DocenteDashboard() {
       {/* ===== VISTA DASHBOARD ===== */}
       {activeView === "dashboard" && (
         <>
-          {grupo ? (
+          {grupoActivo ? (
             <>
               {/* Info del Grupo */}
-              <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-6 mb-6 text-white">
-                <div className="flex items-center justify-between">
+              <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-800 rounded-3xl p-8 mb-8 text-white shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div>
-                    <h2 className="text-2xl font-bold">{grupo.nombre}</h2>
-                    <p className="text-blue-100 mt-1">
-                      Edades: {grupo.edad_minima} - {grupo.edad_maxima} años
-                    </p>
-                    <p className="text-blue-100">
-                      Horario: {grupo.horario || "No definido"}
-                    </p>
+                    <h2 className="text-3xl font-extrabold tracking-tight">{grupoActivo.nombre}</h2>
+                    <div className="flex flex-wrap gap-3 mt-3">
+                      <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium border border-white/10">
+                        Edades: {grupoActivo.edad_minima} - {grupoActivo.edad_maxima} años
+                      </span>
+                      <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium border border-white/10 flex items-center">
+                        <CalendarIcon className="w-3.5 h-3.5 mr-1" />
+                        {grupoActivo.horario || "Horario no definido"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-center bg-white/20 rounded-xl p-4">
-                    <p className="text-4xl font-bold">{grupo.total_estudiantes}</p>
-                    <p className="text-blue-100 text-sm">Estudiantes</p>
+                  <div className="text-center bg-white/20 backdrop-blur-lg rounded-2xl p-5 border border-white/20 min-w-[140px] shadow-lg">
+                    <p className="text-5xl font-black">{grupoActivo.total_estudiantes}</p>
+                    <p className="text-blue-100 text-xs font-bold uppercase tracking-widest mt-1">Estudiantes</p>
                   </div>
                 </div>
               </div>
@@ -504,7 +581,7 @@ export default function DocenteDashboard() {
       )}
 
       {/* ===== VISTA GESTIÓN ===== */}
-      {activeView === "gestion" && grupo && (
+      {activeView === "gestion" && grupoActivo && (
         <div className="space-y-8 animate-fade-in">
           {/* Tabs Navigation */}
           <div className="flex space-x-2 bg-slate-100/80 p-1.5 rounded-2xl w-fit shadow-inner border border-slate-200/60">
@@ -540,6 +617,16 @@ export default function DocenteDashboard() {
               }`}
             >
               <DocumentTextIcon className="w-5 h-5" /> Tareas
+            </button>
+            <button
+              onClick={() => setGestionSubView("evaluacion")}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
+                gestionSubView === "evaluacion"
+                  ? "bg-white text-indigo-600 shadow-md ring-1 ring-slate-900/5"
+                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+              }`}
+            >
+              <AcademicCapIcon className="w-5 h-5" /> Evaluación
             </button>
           </div>
 
@@ -694,208 +781,357 @@ export default function DocenteDashboard() {
           </div>
           )}
 
-          {/* Tab Content: Asistencia */}
           {gestionSubView === "asistencia" && (
-          <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
-            <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-indigo-600 mb-6 flex items-center">
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center mr-3">
-                <CalendarIcon className="w-5 h-5 text-indigo-600" />
+            <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+              <div>
+                <h3 className="text-2xl font-black text-slate-800 flex items-center">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center mr-4 shadow-lg shadow-indigo-200">
+                    <CalendarIcon className="w-6 h-6 text-white" />
+                  </div>
+                  Control de Asistencia
+                </h3>
+                <p className="text-slate-500 mt-1 ml-16">Registra la presencia diaria de tus estudiantes</p>
               </div>
-              Tomar Asistencia
-            </h3>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Fecha:
-              </label>
-              <input
-                type="date"
-                value={fechaAsistencia}
-                onChange={handleFechaChange}
-                className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
+              
+              <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-200">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-2">Fecha:</label>
+                <input
+                  type="date"
+                  value={fechaAsistencia}
+                  onChange={(e) => {
+                    const nf = e.target.value;
+                    setFechaAsistencia(nf);
+                    setAsistenciaCargada(false);
+                  }}
+                  className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all"
+                />
+              </div>
             </div>
 
             {!asistenciaCargada ? (
-              <button
-                onClick={() => loadEstudiantesAsistencia(fechaAsistencia)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
-              >
-                Cargar Lista de Estudiantes
-              </button>
+              <div className="flex flex-col items-center justify-center py-16 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md mb-4">
+                  <UserGroupIcon className="w-8 h-8 text-indigo-500" />
+                </div>
+                <h4 className="text-lg font-bold text-slate-800">¿Listo para empezar?</h4>
+                <p className="text-slate-500 text-sm mb-6">Carga la lista de estudiantes para la fecha seleccionada</p>
+                <button
+                  onClick={() => loadEstudiantesAsistencia(fechaAsistencia)}
+                  disabled={asistenciaLoading}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-8 py-3 rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {asistenciaLoading ? "Cargando..." : "Cargar Estudiantes"}
+                </button>
+              </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3">Estudiante</th>
-                      <th className="px-4 py-3">Estado Actual</th>
-                      <th className="px-4 py-3 text-center">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {estudiantesAsistencia.map((est) => (
-                      <tr key={est.id_matricula} className="border-b hover:bg-gray-50">
-                        <td className="px-4 py-3 font-medium">
-                          <div className="flex flex-col">
-                            <span>{est.nombres} {est.apellidos}</span>
-                            {/* Gamificación: Mostrar estrellas ganadas */}
-                            <div className="flex items-center gap-1 mt-1">
-                              {[...Array(5)].map((_, i) => (
-                                <svg 
-                                  key={i} 
-                                  className={`w-4 h-4 ${i < (estrellas[est.id_nino] || 0) ? "text-yellow-400" : "text-gray-200"}`} 
-                                  fill="currentColor" 
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                              ))}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          {est.asistencia_estado === "presente" && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Presente
-                            </span>
-                          )}
-                          {est.asistencia_estado === "ausente" && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              Ausente
-                            </span>
-                          )}
-                          {!est.asistencia_estado && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                              Sin registrar
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex justify-center flex-wrap gap-2">
-                            <button
-                              onClick={() => handletoggleEstrella(est.id_nino)}
-                              className="px-2 py-1 rounded-lg text-yellow-600 bg-yellow-50 hover:bg-yellow-100 border border-yellow-200 transition-colors flex items-center justify-center"
-                              title="Dar/Quitar Estrella de Comportamiento"
-                            >
-                              ⭐ +
-                            </button>
-                            <button
-                              onClick={() => handleAsistencia(est.id_matricula, "presente")}
-                              className={`px-3 py-1 rounded text-white text-xs ${
-                                est.asistencia_estado === "presente"
-                                  ? "bg-green-600"
-                                  : "bg-green-500 hover:bg-green-600"
-                              }`}
-                            >
-                              Presente
-                            </button>
-                            <button
-                              onClick={() => handleAsistencia(est.id_matricula, "ausente")}
-                              className={`px-3 py-1 rounded text-white text-xs ${
-                                est.asistencia_estado === "ausente"
-                                  ? "bg-red-600"
-                                  : "bg-red-500 hover:bg-red-600"
-                              }`}
-                            >
-                              Ausente
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-in">
+                {estudiantesAsistencia.map((est) => (
+                  <div 
+                    key={est.id_matricula} 
+                    className={`group relative bg-white rounded-3xl p-6 border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+                      est.asistencia_estado === 'presente' ? 'border-emerald-100 bg-emerald-50/10' : 
+                      est.asistencia_estado === 'ausente' ? 'border-red-100 bg-red-50/10' : 'border-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-600 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                        {est.nombres[0]}{est.apellidos[0]}
+                      </div>
+                      <button
+                        onClick={() => handletoggleEstrella(est.id_nino)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                          (estrellas[est.id_nino] || 0) > 0 
+                            ? "bg-amber-100 text-amber-700 border border-amber-200" 
+                            : "bg-slate-100 text-slate-400 border border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-100"
+                        }`}
+                      >
+                        <span className="text-base">⭐</span>
+                        {estrellas[est.id_nino] || 0}
+                      </button>
+                    </div>
+
+                    <h4 className="text-base font-bold text-slate-800 line-clamp-1">{est.nombres}</h4>
+                    <p className="text-xs text-slate-500 font-medium">{est.apellidos}</p>
+
+                    <div className="mt-6 flex gap-2">
+                      <button
+                        onClick={() => handleAsistencia(est.id_matricula, "presente")}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-bold transition-all ${
+                          est.asistencia_estado === "presente"
+                            ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200"
+                            : "bg-white text-slate-400 border border-slate-200 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50"
+                        }`}
+                      >
+                        <CheckCircleIcon className="w-4 h-4" />
+                        Presente
+                      </button>
+                      <button
+                        onClick={() => handleAsistencia(est.id_matricula, "ausente")}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-bold transition-all ${
+                          est.asistencia_estado === "ausente"
+                            ? "bg-red-500 text-white shadow-lg shadow-red-200"
+                            : "bg-white text-slate-400 border border-slate-200 hover:border-red-300 hover:text-red-600 hover:bg-red-50"
+                        }`}
+                      >
+                        <XCircleIcon className="w-4 h-4" />
+                        Ausente
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
           )}
 
-          {/* Tab Content: Guías de Estudio */}
+          {/* Tab Content: Tareas / Recursos */}
           {gestionSubView === "tareas" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
-              <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-violet-600 mb-6 flex items-center">
-                <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center mr-3">
-                  <DocumentTextIcon className="w-5 h-5 text-violet-600" />
-                </div>
-                Nueva Guía de Estudio
-              </h3>
-              <form className="space-y-5" onSubmit={handleCrearGuia}>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Tema / Título</label>
-                  <input 
-                    type="text" 
-                    value={nuevaGuia.titulo}
-                    onChange={(e) => setNuevaGuia({...nuevaGuia, titulo: e.target.value})}
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 bg-slate-50 transition-shadow" 
-                    placeholder="Ej. Vocales y Colores" 
-                    required 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Descripción y Apoyo</label>
-                  <textarea 
-                    rows={4} 
-                    value={nuevaGuia.descripcion}
-                    onChange={(e) => setNuevaGuia({...nuevaGuia, descripcion: e.target.value})}
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 bg-slate-50 resize-none transition-shadow" 
-                    placeholder="Detalles para que el acudiente repase con el niño..." 
-                    required>
-                  </textarea>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Fecha Sugerida de Repaso</label>
-                  <input 
-                    type="date" 
-                    value={nuevaGuia.fecha_entrega}
-                    onChange={(e) => setNuevaGuia({...nuevaGuia, fecha_entrega: e.target.value})}
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 bg-slate-50 transition-shadow" 
-                    required 
-                  />
-                </div>
-                <button type="submit" className="w-full bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white font-bold py-3.5 rounded-xl transition-all duration-300 shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 active:scale-95">
-                  Asignar Guía
-                </button>
-              </form>
-            </div>
-            
-            <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col">
-              <h3 className="text-xl font-bold text-slate-800 mb-6">Guías Asignadas</h3>
-              
-              {guias.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-slate-400 py-12 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
-                  <DocumentTextIcon className="w-12 h-12 mb-3 text-slate-300" />
-                  <p>No hay guías asignadas</p>
-                </div>
-              ) : (
-                <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-                  {guias.map((guia) => (
-                    <div key={guia.id} className="p-5 border border-slate-100 bg-slate-50/50 rounded-2xl hover:bg-white hover:border-violet-200 transition-all duration-300 group shadow-sm">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-bold text-slate-800 group-hover:text-violet-600 transition-colors">
-                          {guia.titulo}
-                        </h4>
-                        <button 
-                          onClick={() => handleEliminarGuia(guia.id)}
-                          className="text-slate-300 hover:text-red-500 transition-colors p-1"
-                          title="Eliminar Guía"
-                        >
-                          <XCircleIcon className="w-5 h-5" />
-                        </button>
-                      </div>
-                      <p className="text-sm text-slate-600 mb-3">{guia.descripcion}</p>
-                      <div className="flex justify-between items-center text-xs font-semibold pt-3 border-t border-slate-200/60 mt-auto">
-                        <span className="text-slate-500">
-                          Repaso: <span className="text-violet-500">{new Date(guia.fecha_entrega).toLocaleDateString()}</span>
-                        </span>
-                      </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
+              {/* Formulario Nueva Tarea */}
+              <div className="lg:col-span-1 bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 h-fit">
+                <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                    <DocumentTextIcon className="w-6 h-6 text-indigo-600" />
+                  </div>
+                  Nueva Tarea
+                </h3>
+                <form onSubmit={handleCrearTarea} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block ml-1">Título / Tema</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="Ej: Guía de colores y formas"
+                      value={nuevaTarea.titulo}
+                      onChange={(e) => setNuevaTarea({...nuevaTarea, titulo: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block ml-1">Descripción de Apoyo</label>
+                    <textarea
+                      rows="4"
+                      placeholder="Instrucciones para que los padres repasen con el niño..."
+                      value={nuevaTarea.descripcion}
+                      onChange={(e) => setNuevaTarea({...nuevaTarea, descripcion: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block ml-1">Fecha Sugerida de Repaso</label>
+                    <input
+                      type="date"
+                      value={nuevaTarea.fecha_entrega}
+                      onChange={(e) => setNuevaTarea({...nuevaTarea, fecha_entrega: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold text-slate-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block ml-1">Link al Recurso (Opcional)</label>
+                    <div className="relative">
+                      <input
+                        type="url"
+                        placeholder="https://ejemplo.com/archivo.pdf"
+                        value={nuevaTarea.recurso_url}
+                        onChange={(e) => setNuevaTarea({...nuevaTarea, recurso_url: e.target.value})}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all pl-11 font-medium"
+                      />
+                      <ArrowUpTrayIcon className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
                     </div>
-                  ))}
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2 mt-4"
+                  >
+                    Publicar Recurso
+                  </button>
+                </form>
+              </div>
+
+              {/* Lista de Tareas */}
+              <div className="lg:col-span-2 flex flex-col">
+                <div className="flex items-center justify-between mb-6 px-2">
+                  <h3 className="text-xl font-bold text-slate-800">Recursos Publicados</h3>
+                  <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase">
+                    {tareas.length} Activos
+                  </span>
                 </div>
-              )}
+
+                {tareasLoading ? (
+                  <div className="flex-1 flex justify-center items-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full shadow-lg"></div>
+                  </div>
+                ) : tareas.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-100 text-center">
+                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-md mb-4 text-slate-300">
+                      <DocumentTextIcon className="w-8 h-8" />
+                    </div>
+                    <p className="text-slate-400 text-sm font-bold">No hay recursos publicados para este grupo.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[700px] pr-2 custom-scrollbar">
+                    {tareas.map((t) => (
+                      <div key={t.id_tarea} className="bg-white p-7 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 group relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <h4 className="text-lg font-black text-slate-800 group-hover:text-indigo-600 transition-colors tracking-tight">{t.titulo}</h4>
+                              <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-lg uppercase tracking-widest flex items-center gap-1">
+                                <CalendarIcon className="w-3 h-3" />
+                                {new Date(t.fecha_creacion).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-slate-500 text-sm leading-relaxed mb-6 font-medium line-clamp-3">{t.descripcion}</p>
+                            
+                            <div className="flex flex-wrap items-center gap-3">
+                              {t.fecha_entrega && (
+                                <div className="flex items-center gap-2 text-[11px] font-black text-red-500 bg-red-50 px-4 py-2 rounded-xl border border-red-100 shadow-sm">
+                                  <CalendarIcon className="w-4 h-4" />
+                                  REPASO: {new Date(t.fecha_entrega).toLocaleDateString()}
+                                </div>
+                              )}
+                              {t.recurso_url && (
+                                <a 
+                                  href={t.recurso_url} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="flex items-center gap-2 text-[11px] font-black text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm border border-indigo-100"
+                                >
+                                  <ArrowUpTrayIcon className="w-4 h-4" />
+                                  DESCARGAR RECURSO
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => handleEliminarTarea(t.id_tarea)}
+                            className="p-2.5 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all active:scale-90"
+                            title="Eliminar Recurso"
+                          >
+                            <TrashIcon className="w-6 h-6" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Tab Content: Evaluación de Desarrollo */}
+          {gestionSubView === "evaluacion" && (
+            <div className="animate-fade-in">
+              <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-800 flex items-center">
+                      <div className="w-12 h-12 rounded-2xl bg-violet-600 flex items-center justify-center mr-4 shadow-lg shadow-violet-200">
+                        <AcademicCapIcon className="w-6 h-6 text-white" />
+                      </div>
+                      Evaluación de Desarrollo
+                    </h3>
+                    <p className="text-slate-500 mt-1 ml-16">Evalúa el desarrollo integral de cada estudiante por dimensiones</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                      <span className="w-3 h-3 rounded-full bg-red-500"></span> Inicio
+                      <span className="w-3 h-3 rounded-full bg-amber-500 ml-2"></span> En Proceso
+                      <span className="w-3 h-3 rounded-full bg-emerald-500 ml-2"></span> Esperado
+                      <span className="w-3 h-3 rounded-full bg-blue-500 ml-2"></span> Avanzado
+                    </div>
+                  </div>
+                </div>
+
+                {evalLoading ? (
+                  <div className="flex justify-center py-16">
+                    <div className="animate-spin h-8 w-8 border-b-2 border-violet-600 rounded-full"></div>
+                  </div>
+                ) : estudiantes.length === 0 ? (
+                  <div className="text-center py-16 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                    <AcademicCapIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-400 font-bold">No hay estudiantes en tu grupo para evaluar.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {estudiantes.map((est) => {
+                      const evalData = evaluaciones.find((e) => e.id_nino === est.id_nino);
+                      const initials = `${(est.nombres || "")[0] || ""}${(est.apellidos || "")[0] || ""}`.toUpperCase();
+                      const dims = evalData
+                        ? [evalData.comunicativa, evalData.cognitiva, evalData.socioafectiva, evalData.corporal, evalData.artistica, evalData.autonomia]
+                        : [];
+                      const avg = dims.length > 0 ? (dims.reduce((a, b) => a + (b || 0), 0) / dims.filter(Boolean).length) : 0;
+                      const getNivelStyle = (v) => {
+                        if (v >= 3.5) return { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200", label: "Avanzado" };
+                        if (v >= 2.5) return { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200", label: "Esperado" };
+                        if (v >= 1.5) return { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-200", label: "En Proceso" };
+                        return { bg: "bg-red-50", text: "text-red-600", border: "border-red-200", label: "Inicio" };
+                      };
+
+                      return (
+                        <div
+                          key={est.id_nino}
+                          className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-lg hover:border-violet-200 transition-all duration-300 group cursor-pointer"
+                          onClick={() => {
+                            setEvalEstudiante(est);
+                            setEvalModalOpen(true);
+                          }}
+                        >
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-md">
+                              {initials}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-black text-slate-800 truncate group-hover:text-violet-600 transition-colors">
+                                {est.nombres} {est.apellidos}
+                              </h4>
+                              {evalData ? (
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getNivelStyle(avg).bg} ${getNivelStyle(avg).text} ${getNivelStyle(avg).border} border`}>
+                                  Promedio: {avg.toFixed(1)} — {getNivelStyle(avg).label}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-slate-400">Sin evaluar</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {evalData ? (
+                            <div className="grid grid-cols-3 gap-1.5">
+                              {[
+                                { key: "comunicativa", icon: "💬", label: "Com" },
+                                { key: "cognitiva", icon: "🧠", label: "Cog" },
+                                { key: "socioafectiva", icon: "🤝", label: "Soc" },
+                                { key: "corporal", icon: "🏃", label: "Cor" },
+                                { key: "artistica", icon: "🎨", label: "Art" },
+                                { key: "autonomia", icon: "⭐", label: "Aut" },
+                              ].map((d) => {
+                                const val = evalData[d.key];
+                                const style = getNivelStyle(val);
+                                return (
+                                  <div
+                                    key={d.key}
+                                    className={`${style.bg} ${style.border} border rounded-lg py-1.5 px-2 text-center`}
+                                  >
+                                    <span className="text-xs">{d.icon}</span>
+                                    <p className={`text-[10px] font-black ${style.text}`}>{val}/4</p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                              <p className="text-xs text-slate-400 font-bold">Toca para evaluar →</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
         </div>
@@ -1038,6 +1274,21 @@ export default function DocenteDashboard() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Modal de Evaluación */}
+      {evalModalOpen && evalEstudiante && (
+        <EvaluacionModal
+          estudiante={evalEstudiante}
+          idGrupo={grupoActivo?.id_grupo}
+          onClose={() => {
+            setEvalModalOpen(false);
+            setEvalEstudiante(null);
+          }}
+          onSaved={() => {
+            loadEvaluaciones();
+          }}
+        />
       )}
     </DashboardLayout>
   );

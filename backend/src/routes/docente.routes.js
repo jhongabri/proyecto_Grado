@@ -16,7 +16,10 @@ const {
   eliminarEstudianteManual,
   getEstudiantesLista,
   actualizarEstudianteManual,
-  registrarComportamiento
+  registrarComportamiento,
+  evaluarDesarrollo,
+  getEvaluacionNino,
+  getEvaluacionesGrupo
 } = require("../controllers/docente.controller");
 
 // Rutas para docentes (rol 2)
@@ -30,6 +33,17 @@ router.delete("/estudiantes/:id_matricula", verifyToken, hasRole(2), eliminarEst
 router.post("/asistencia", verifyToken, hasRole(2), registrarAsistencia);
 router.post("/reportes", verifyToken, hasRole(2), crearReporte);
 router.post("/comportamiento", verifyToken, hasRole(2), registrarComportamiento);
+
+// Tareas y Recursos
+const { getTareas, crearTarea, eliminarTarea } = require("../controllers/docente.controller");
+router.get("/tareas", verifyToken, hasRole(2), getTareas);
+router.post("/tareas", verifyToken, hasRole(2), crearTarea);
+router.delete("/tareas/:id", verifyToken, hasRole(2), eliminarTarea);
+
+// Evaluación de Desarrollo Infantil
+router.post("/evaluacion", verifyToken, hasRole(2), evaluarDesarrollo);
+router.get("/evaluacion/:id_nino", verifyToken, hasRole(2), getEvaluacionNino);
+router.get("/evaluaciones", verifyToken, hasRole(2), getEvaluacionesGrupo);
 
 // Rutas para admin (rol 1)
 router.get("/reportes/admin", verifyToken, hasRole(1), getReportesAdmin);

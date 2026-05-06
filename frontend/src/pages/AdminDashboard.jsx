@@ -89,47 +89,44 @@ export default function AdminDashboard() {
   // Modal Asignar Grupo states
   const [showAsignarModal, setShowAsignarModal] = useState(false);
   const [selectedDocente, setSelectedDocente] = useState(null);
-  const [selectedGrupoId, setSelectedGrupoId] = useState("");
+  const [selectedGrupos, setSelectedGrupos] = useState([]); // Ahora es un array
   const [asignandoGrupo, setAsignandoGrupo] = useState(false);
   const [grupoError, setGrupoError] = useState("");
 
   // ✅ FIX: Un único handler que siempre limpia el estado antes de abrir el modal
   const handleOpenAsignarModal = (docente) => {
     setSelectedDocente(docente);
-    setSelectedGrupoId("");   // limpiar selección previa
-    setGrupoError("");        // limpiar error previo
+    // Extraer solo IDs de los grupos actuales del docente
+    const ids = docente.grupos ? docente.grupos.map(g => g.id_grupo) : [];
+    setSelectedGrupos(ids);
+    setGrupoError("");
     setShowAsignarModal(true);
   };
 
   const handleCloseAsignarModal = () => {
     setShowAsignarModal(false);
     setSelectedDocente(null);
-    setSelectedGrupoId("");
+    setSelectedGrupos([]);
     setGrupoError("");
   };
 
-  const handleGrupoChange = (grupoId) => {
-    setSelectedGrupoId(grupoId);
+  const handleGrupoChange = (ids) => {
+    setSelectedGrupos(ids);
     setGrupoError("");
   };
 
   const handleAsignarGrupoSubmit = async () => {
-    if (!selectedGrupoId) {
-      setGrupoError("Selecciona un grupo");
-      return;
-    }
     setAsignandoGrupo(true);
     setGrupoError("");
     try {
       await API.put("/admin/docentes/asignar-grupo", {
         id_docente: selectedDocente.id_usuario,
-        id_grupo: selectedGrupoId,
+        id_grupos: selectedGrupos, // Enviar el array completo
       });
       handleCloseAsignarModal();
       refreshDocentes();
-      refreshGrupos();
     } catch (err) {
-      setGrupoError(err.response?.data?.message || "Error asignando grupo");
+      setGrupoError(err.response?.data?.message || "Error asignando grupos");
     } finally {
       setAsignandoGrupo(false);
     }
@@ -480,7 +477,7 @@ export default function AdminDashboard() {
                 isOpen={showAsignarModal}
                 docente={selectedDocente}
                 grupos={grupos}
-                grupoSeleccionado={selectedGrupoId}
+                grupoSeleccionado={selectedGrupos}
                 onGrupoChange={handleGrupoChange}
                 onSubmit={handleAsignarGrupoSubmit}
                 onClose={handleCloseAsignarModal}

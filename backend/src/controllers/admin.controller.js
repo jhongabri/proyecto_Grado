@@ -92,10 +92,18 @@ exports.createDocente = async (req, res) => {
 exports.getAllDocentes = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT u.id_usuario, u.nombre, u.correo, u.id_rol, u.estado, u.id_grupo, g.nombre as nombre_grupo
+      `SELECT u.id_usuario, u.nombre, u.correo, u.id_rol, u.estado,
+              COALESCE(
+                json_agg(
+                  json_build_object('id_grupo', g.id_grupo, 'nombre', g.nombre)
+                ) FILTER (WHERE g.id_grupo IS NOT NULL),
+                '[]'
+              ) as grupos
        FROM usuarios u
-       LEFT JOIN grupos g ON u.id_grupo = g.id_grupo
+       LEFT JOIN usuario_grupos ug ON u.id_usuario = ug.id_usuario
+       LEFT JOIN grupos g ON ug.id_grupo = g.id_grupo
        WHERE u.id_rol = 2
+       GROUP BY u.id_usuario, u.nombre, u.correo, u.id_rol, u.estado
        ORDER BY u.nombre`
     );
 
@@ -277,55 +285,47 @@ exports.importarEstudiantesAdmin = async (req, res) => {
 };
 
 // ==========================================
-// ASIGNAR GRUPO A DOCENTE
+// ASIGNAR GRUPOS A DOCENTE (Soporta múltiples)
 // ==========================================
 exports.asignarGrupoDocente = async (req, res) => {
+  const client = await pool.connect();
   try {
-    const { id_docente, id_grupo } = req.body;
+    const { id_docente, id_grupos } = req.body; // id_grupos es un array
 
     if (!id_docente) {
       return res.status(400).json({ message: "ID del docente es requerido" });
     }
 
-    // Verificar que el docente exista
-    const docenteExists = await pool.query(
-      "SELECT id_usuario, nombre FROM usuarios WHERE id_usuario = $1 AND id_rol = 2",
+    await client.query("BEGIN");
+
+    // Eliminar asignaciones previas
+    await client.query(
+      "DELETE FROM usuario_grupos WHERE id_usuario = $1",
       [id_docente]
     );
 
-    if (docenteExists.rows.length === 0) {
-      return res.status(404).json({ message: "Docente no encontrado" });
-    }
-
-    // Verificar que el grupo exista (si se proporciona)
-    if (id_grupo) {
-      const grupoExists = await pool.query(
-        "SELECT id_grupo FROM grupos WHERE id_grupo = $1",
-        [id_grupo]
-      );
-
-      if (grupoExists.rows.length === 0) {
-        return res.status(404).json({ message: "Grupo no encontrado" });
+    // Insertar nuevas asignaciones si hay
+    if (id_grupos && Array.isArray(id_grupos) && id_grupos.length > 0) {
+      for (const id_grupo of id_grupos) {
+        await client.query(
+          "INSERT INTO usuario_grupos (id_usuario, id_grupo) VALUES ($1, $2)",
+          [id_docente, id_grupo]
+        );
       }
     }
 
-    // Actualizar el grupo del docente
-    const result = await pool.query(
-      `UPDATE usuarios 
-       SET id_grupo = $1 
-       WHERE id_usuario = $2 
-       RETURNING id_usuario, nombre, id_grupo`,
-      [id_grupo || null, id_docente]
-    );
+    await client.query("COMMIT");
 
     res.json({
-      message: id_grupo ? "Grupo asignado correctamente" : "Grupo removido correctamente",
-      docente: result.rows[0]
+      message: "Grupos actualizados correctamente"
     });
 
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error(error);
-    res.status(500).json({ message: "Error asignando grupo" });
+    res.status(500).json({ message: "Error asignando grupos" });
+  } finally {
+    client.release();
   }
 };
 

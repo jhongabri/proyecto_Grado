@@ -7,33 +7,39 @@ exports.getDashboardDocente = async (req, res) => {
   try {
     const idDocente = req.user.id;
 
-    // 1. Obtener el grupo asignado al docente
-    const grupoResult = await pool.query(
+    // 1. Obtener los grupos asignados al docente
+    const gruposResult = await pool.query(
       `SELECT g.id_grupo, g.nombre, g.edad_minima, g.edad_maxima, g.horario
        FROM grupos g
-       INNER JOIN usuarios u ON u.id_grupo = g.id_grupo
-       WHERE u.id_usuario = $1 AND u.id_rol = 2`,
+       INNER JOIN usuario_grupos ug ON ug.id_grupo = g.id_grupo
+       WHERE ug.id_usuario = $1`,
       [idDocente]
     );
 
-    if (grupoResult.rows.length === 0) {
-      return res.status(404).json({ message: "No tienes un grupo asignado" });
+    if (gruposResult.rows.length === 0) {
+      return res.json({ 
+        grupos: [], 
+        message: "No tienes grupos asignados" 
+      });
     }
 
-    const grupo = grupoResult.rows[0];
+    const grupos = gruposResult.rows;
+    // Por defecto cargamos datos del primer grupo si no se especifica uno
+    const idGrupo = req.query.id_grupo || grupos[0].id_grupo;
+    const grupoActivo = grupos.find(g => g.id_grupo == idGrupo) || grupos[0];
 
-    // 2. Obtener estudiantes matriculados en el grupo
+    // 2. Obtener estudiantes matriculados en el grupo activo
     const estudiantesResult = await pool.query(
       `SELECT m.id_matricula, n.id_nino, n.nombres, n.apellidos, n.fecha_nacimiento
        FROM matriculas m
        INNER JOIN ninos n ON m.id_nino = n.id_nino
        WHERE m.id_grupo = $1 AND m.estado = TRUE`,
-      [grupo.id_grupo]
+      [grupoActivo.id_grupo]
     );
 
     const estudiantes = estudiantesResult.rows;
 
-    // 3. Obtener estadísticas de asistencia del mes actual
+    // 3. Obtener estadísticas de asistencia del mes actual para el grupo activo
     const asistenciaStats = await pool.query(
       `SELECT 
         COUNT(*) as total,
@@ -43,10 +49,10 @@ exports.getDashboardDocente = async (req, res) => {
        INNER JOIN matriculas m ON a.id_matricula = m.id_matricula
        WHERE m.id_grupo = $1 
        AND DATE_TRUNC('month', a.fecha) = DATE_TRUNC('month', CURRENT_DATE)`,
-      [grupo.id_grupo]
+      [grupoActivo.id_grupo]
     );
 
-    // 4. Obtener últimos reportes del grupo
+    // 4. Obtener últimos reportes del docente
     const reportesResult = await pool.query(
       `SELECT r.id_reporte, r.titulo, r.descripcion, r.fecha, r.estado
        FROM reportes r
@@ -62,12 +68,9 @@ exports.getDashboardDocente = async (req, res) => {
       : 0;
 
     res.json({
-      grupo: {
-        id_grupo: grupo.id_grupo,
-        nombre: grupo.nombre,
-        edad_minima: grupo.edad_minima,
-        edad_maxima: grupo.edad_maxima,
-        horario: grupo.horario,
+      grupos,
+      grupoActivo: {
+        ...grupoActivo,
         total_estudiantes: estudiantes.length
       },
       estudiantes,
@@ -249,20 +252,21 @@ exports.importarEstudiantes = async (req, res) => {
 exports.getEstudiantesAsistencia = async (req, res) => {
   try {
     const idDocente = req.user.id;
+    const idGrupo = req.query.id_grupo;
 
-    // Obtener grupo del docente
-    const grupoResult = await pool.query(
-      `SELECT g.id_grupo FROM grupos g
-       INNER JOIN usuarios u ON u.id_grupo = g.id_grupo
-       WHERE u.id_usuario = $1 AND u.id_rol = 2`,
-      [idDocente]
-    );
-
-    if (grupoResult.rows.length === 0) {
-      return res.status(404).json({ message: "No tienes un grupo asignado" });
+    if (!idGrupo) {
+      return res.status(400).json({ message: "ID de grupo es requerido" });
     }
 
-    const idGrupo = grupoResult.rows[0].id_grupo;
+    // Verificar acceso al grupo
+    const checkAcceso = await pool.query(
+      `SELECT 1 FROM usuario_grupos WHERE id_usuario = $1 AND id_grupo = $2`,
+      [idDocente, idGrupo]
+    );
+
+    if (checkAcceso.rows.length === 0) {
+      return res.status(403).json({ message: "No tienes acceso a este grupo" });
+    }
 
     // Obtener estudiantes con su asistencia del día
     const fecha = req.query.fecha || new Date().toISOString().split('T')[0];
@@ -302,29 +306,31 @@ exports.getEstudiantesAsistencia = async (req, res) => {
 exports.registrarAsistencia = async (req, res) => {
   try {
     const idDocente = req.user.id;
-    const { id_matricula, fecha, estado, observacion } = req.body;
+    const { id_matricula, fecha, estado, observacion, id_grupo } = req.body;
 
-    // Verificar que el docente tenga acceso a este grupo
-    const grupoResult = await pool.query(
-      `SELECT g.id_grupo FROM grupos g
-       INNER JOIN usuarios u ON u.id_grupo = g.id_grupo
-       WHERE u.id_usuario = $1 AND u.id_rol = 2`,
-      [idDocente]
-    );
-
-    if (grupoResult.rows.length === 0) {
-      return res.status(403).json({ message: "No tienes un grupo asignado" });
+    if (!id_grupo) {
+      return res.status(400).json({ message: "ID de grupo es requerido" });
     }
 
-    // Verificar que la matrícula pertenezca al grupo del docente
+    // Verificar que el docente tenga acceso a este grupo
+    const checkAcceso = await pool.query(
+      `SELECT 1 FROM usuario_grupos WHERE id_usuario = $1 AND id_grupo = $2`,
+      [idDocente, id_grupo]
+    );
+
+    if (checkAcceso.rows.length === 0) {
+      return res.status(403).json({ message: "No tienes acceso a este grupo" });
+    }
+
+    // Verificar que la matrícula pertenezca al grupo indicado
     const matriculaResult = await pool.query(
       `SELECT m.id_matricula FROM matriculas m
        WHERE m.id_matricula = $1 AND m.id_grupo = $2`,
-      [id_matricula, grupoResult.rows[0].id_grupo]
+      [id_matricula, id_grupo]
     );
 
     if (matriculaResult.rows.length === 0) {
-      return res.status(403).json({ message: "Matrícula no pertenece a tu grupo" });
+      return res.status(403).json({ message: "Matrícula no pertenece al grupo" });
     }
 
     // Verificar si ya existe asistencia para esa fecha
@@ -434,16 +440,21 @@ exports.actualizarReporte = async (req, res) => {
 exports.getEstudiantesLista = async (req, res) => {
   try {
     const userId = req.user.id;
-    const grupo = await pool.query(
-      "SELECT id_grupo FROM usuarios WHERE id_usuario = $1 AND id_rol = 2",
-      [userId]
-    );
+    const idGrupo = req.query.id_grupo;
 
-    if (grupo.rows.length === 0 || !grupo.rows[0].id_grupo) {
+    if (!idGrupo) {
       return res.json([]);
     }
 
-    const idGrupo = grupo.rows[0].id_grupo;
+    // Verificar acceso
+    const checkAcceso = await pool.query(
+      "SELECT 1 FROM usuario_grupos WHERE id_usuario = $1 AND id_grupo = $2",
+      [userId, idGrupo]
+    );
+
+    if (checkAcceso.rows.length === 0) {
+      return res.status(403).json({ message: "No autorizado" });
+    }
 
     const estudiantes = await pool.query(
       `SELECT m.id_matricula, n.id_nino, n.nombres, n.apellidos, n.fecha_nacimiento, n.documento
@@ -465,20 +476,20 @@ exports.getEstudiantesLista = async (req, res) => {
 exports.agregarEstudianteManual = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { nombres, apellidos, fecha_nacimiento, documento } = req.body;
+    const { nombres, apellidos, fecha_nacimiento, documento, id_grupo } = req.body;
 
-    if (!nombres || !apellidos || !fecha_nacimiento) {
-      return res.status(400).json({ message: "Nombres, apellidos y fecha de nacimiento son obligatorios" });
+    if (!nombres || !apellidos || !fecha_nacimiento || !id_grupo) {
+      return res.status(400).json({ message: "Datos incompletos" });
     }
 
-    const grupo = await pool.query(
-      "SELECT id_grupo FROM usuarios WHERE id_usuario = $1 AND id_rol = 2",
-      [userId]
+    // Verificar acceso
+    const checkAcceso = await pool.query(
+      "SELECT 1 FROM usuario_grupos WHERE id_usuario = $1 AND id_grupo = $2",
+      [userId, id_grupo]
     );
-    if (grupo.rows.length === 0 || !grupo.rows[0].id_grupo) {
-      return res.status(404).json({ message: "No tienes un grupo asignado" });
+    if (checkAcceso.rows.length === 0) {
+      return res.status(403).json({ message: "No autorizado" });
     }
-    const idGrupo = grupo.rows[0].id_grupo;
 
     let idNino;
     let existingNino = documento ? 
@@ -504,7 +515,7 @@ exports.agregarEstudianteManual = async (req, res) => {
 
     const checkMat = await pool.query(
       "SELECT id_matricula FROM matriculas WHERE id_nino = $1 AND id_grupo = $2",
-      [idNino, idGrupo]
+      [idNino, id_grupo]
     );
     
     if (checkMat.rows.length > 0) {
@@ -513,7 +524,7 @@ exports.agregarEstudianteManual = async (req, res) => {
 
     await pool.query(
       "INSERT INTO matriculas (id_nino, id_grupo, fecha_matricula, estado) VALUES ($1, $2, CURRENT_DATE, TRUE)",
-      [idNino, idGrupo]
+      [idNino, id_grupo]
     );
 
     res.json({ message: "Estudiante agregado exitosamente" });
@@ -621,6 +632,188 @@ exports.registrarComportamiento = async (req, res) => {
   } catch (error) {
     console.error("Error Behavior:", error);
     res.status(500).json({ message: "Error al registrar comportamiento" });
+  }
+};
+
+// --- GESTIÓN DE TAREAS ---
+
+// Obtener tareas por grupo
+exports.getTareas = async (req, res) => {
+  try {
+    const idDocente = req.user.id;
+    const { id_grupo } = req.query;
+
+    if (!id_grupo) return res.status(400).json({ message: "Grupo requerido" });
+
+    const result = await pool.query(
+      `SELECT * FROM tareas WHERE id_grupo = $1 ORDER BY fecha_creacion DESC`,
+      [id_grupo]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al obtener tareas" });
+  }
+};
+
+// Crear tarea
+exports.crearTarea = async (req, res) => {
+  try {
+    const idDocente = req.user.id;
+    const { id_grupo, titulo, descripcion, fecha_entrega, recurso_url } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO tareas (id_grupo, id_docente, titulo, descripcion, fecha_entrega, recurso_url)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [id_grupo, idDocente, titulo, descripcion, fecha_entrega, recurso_url]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al crear tarea" });
+  }
+};
+
+// Eliminar tarea
+exports.eliminarTarea = async (req, res) => {
+  try {
+    const idDocente = req.user.id;
+    const { id } = req.params;
+
+    await pool.query("DELETE FROM tareas WHERE id_tarea = $1 AND id_docente = $2", [id, idDocente]);
+    res.json({ message: "Tarea eliminada" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al eliminar tarea" });
+  }
+};
+
+// --- EVALUACIÓN DE DESARROLLO INFANTIL ---
+
+// Crear o actualizar evaluación de desarrollo de un niño
+exports.evaluarDesarrollo = async (req, res) => {
+  try {
+    const idDocente = req.user.id;
+    const {
+      id_nino, id_grupo, fecha,
+      comunicativa, cognitiva, socioafectiva, corporal, artistica, autonomia,
+      obs_comunicativa, obs_cognitiva, obs_socioafectiva, obs_corporal, obs_artistica, obs_autonomia,
+      observacion_general
+    } = req.body;
+
+    if (!id_nino || !id_grupo) {
+      return res.status(400).json({ message: "ID del niño y grupo son requeridos" });
+    }
+
+    // Verificar que el docente tenga acceso al grupo
+    const checkAcceso = await pool.query(
+      `SELECT 1 FROM usuario_grupos WHERE id_usuario = $1 AND id_grupo = $2`,
+      [idDocente, id_grupo]
+    );
+
+    if (checkAcceso.rows.length === 0) {
+      return res.status(403).json({ message: "No tienes acceso a este grupo" });
+    }
+
+    const fechaEval = fecha || new Date().toISOString().split('T')[0];
+
+    const result = await pool.query(
+      `INSERT INTO evaluaciones_desarrollo 
+       (id_nino, id_grupo, id_docente, fecha,
+        comunicativa, cognitiva, socioafectiva, corporal, artistica, autonomia,
+        obs_comunicativa, obs_cognitiva, obs_socioafectiva, obs_corporal, obs_artistica, obs_autonomia,
+        observacion_general)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+       ON CONFLICT (id_nino, id_grupo, fecha) DO UPDATE SET
+        comunicativa = EXCLUDED.comunicativa,
+        cognitiva = EXCLUDED.cognitiva,
+        socioafectiva = EXCLUDED.socioafectiva,
+        corporal = EXCLUDED.corporal,
+        artistica = EXCLUDED.artistica,
+        autonomia = EXCLUDED.autonomia,
+        obs_comunicativa = EXCLUDED.obs_comunicativa,
+        obs_cognitiva = EXCLUDED.obs_cognitiva,
+        obs_socioafectiva = EXCLUDED.obs_socioafectiva,
+        obs_corporal = EXCLUDED.obs_corporal,
+        obs_artistica = EXCLUDED.obs_artistica,
+        obs_autonomia = EXCLUDED.obs_autonomia,
+        observacion_general = EXCLUDED.observacion_general,
+        id_docente = EXCLUDED.id_docente
+       RETURNING *`,
+      [id_nino, id_grupo, idDocente, fechaEval,
+       comunicativa, cognitiva, socioafectiva, corporal, artistica, autonomia,
+       obs_comunicativa || '', obs_cognitiva || '', obs_socioafectiva || '', obs_corporal || '', obs_artistica || '', obs_autonomia || '',
+       observacion_general || '']
+    );
+
+    res.json({
+      message: "Evaluación guardada exitosamente",
+      evaluacion: result.rows[0]
+    });
+  } catch (error) {
+    console.error("Error al evaluar desarrollo:", error);
+    res.status(500).json({ message: "Error al guardar evaluación" });
+  }
+};
+
+// Obtener la evaluación más reciente de un niño específico
+exports.getEvaluacionNino = async (req, res) => {
+  try {
+    const { id_nino } = req.params;
+    const { id_grupo } = req.query;
+
+    if (!id_grupo) {
+      return res.status(400).json({ message: "ID de grupo es requerido" });
+    }
+
+    const result = await pool.query(
+      `SELECT ed.*, n.nombres, n.apellidos
+       FROM evaluaciones_desarrollo ed
+       INNER JOIN ninos n ON ed.id_nino = n.id_nino
+       WHERE ed.id_nino = $1 AND ed.id_grupo = $2
+       ORDER BY ed.fecha DESC
+       LIMIT 1`,
+      [id_nino, id_grupo]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json(null);
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error al obtener evaluación:", error);
+    res.status(500).json({ message: "Error al obtener evaluación" });
+  }
+};
+
+// Obtener las evaluaciones más recientes de todos los niños de un grupo
+exports.getEvaluacionesGrupo = async (req, res) => {
+  try {
+    const { id_grupo } = req.query;
+
+    if (!id_grupo) {
+      return res.status(400).json({ message: "ID de grupo es requerido" });
+    }
+
+    const result = await pool.query(
+      `SELECT DISTINCT ON (ed.id_nino)
+        ed.id_evaluacion, ed.id_nino, ed.fecha,
+        ed.comunicativa, ed.cognitiva, ed.socioafectiva, 
+        ed.corporal, ed.artistica, ed.autonomia,
+        n.nombres, n.apellidos
+       FROM evaluaciones_desarrollo ed
+       INNER JOIN ninos n ON ed.id_nino = n.id_nino
+       WHERE ed.id_grupo = $1
+       ORDER BY ed.id_nino, ed.fecha DESC`,
+      [id_grupo]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error al obtener evaluaciones del grupo:", error);
+    res.status(500).json({ message: "Error al obtener evaluaciones" });
   }
 };
 
