@@ -13,7 +13,8 @@ const {
   eliminarEstudianteGrupo,
   actualizarEstudianteGrupo,
   vincularAcudienteNino,
-  getAllAcudientes
+  getAllAcudientes,
+  buscarEstudiantes
 } = require("../controllers/admin.controller");
 
 // 👇 Importación correcta
@@ -54,5 +55,8 @@ router.post("/grupos/importar", verifyToken, hasRole(1), upload.single("excel"),
 
 // Asignar grupo a docente
 router.put("/docentes/asignar-grupo", verifyToken, hasRole(1), asignarGrupoDocente);
+
+// Buscar estudiantes (GLOBAL)
+router.get("/estudiantes/buscar", verifyToken, hasRole(1), buscarEstudiantes);
 
 module.exports = router;

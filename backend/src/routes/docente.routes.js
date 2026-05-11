@@ -19,7 +19,14 @@ const {
   registrarComportamiento,
   evaluarDesarrollo,
   getEvaluacionNino,
-  getEvaluacionesGrupo
+  getEvaluacionesGrupo,
+  getRecursos,
+  crearRecurso,
+  eliminarRecurso,
+  crearTarea,
+  getTareas,
+  eliminarTarea,
+  buscarEstudiantes
 } = require("../controllers/docente.controller");
 
 // Rutas para docentes (rol 2)
@@ -34,20 +41,28 @@ router.post("/asistencia", verifyToken, hasRole(2), registrarAsistencia);
 router.post("/reportes", verifyToken, hasRole(2), crearReporte);
 router.post("/comportamiento", verifyToken, hasRole(2), registrarComportamiento);
 
+const fileUpload = require("../middlewares/upload.middleware");
+
 // Tareas y Recursos
-const { getTareas, crearTarea, eliminarTarea } = require("../controllers/docente.controller");
 router.get("/tareas", verifyToken, hasRole(2), getTareas);
-router.post("/tareas", verifyToken, hasRole(2), crearTarea);
+router.post("/tareas", verifyToken, hasRole(2), fileUpload.single("archivo"), crearTarea);
 router.delete("/tareas/:id", verifyToken, hasRole(2), eliminarTarea);
+
+// Recursos
+router.get("/recursos", verifyToken, hasRole(2), getRecursos);
+router.post("/recursos", verifyToken, hasRole(2), fileUpload.single("archivo"), crearRecurso);
+router.delete("/recursos/:id", verifyToken, hasRole(2), eliminarRecurso);
 
 // Evaluación de Desarrollo Infantil
 router.post("/evaluacion", verifyToken, hasRole(2), evaluarDesarrollo);
 router.get("/evaluacion/:id_nino", verifyToken, hasRole(2), getEvaluacionNino);
 router.get("/evaluaciones", verifyToken, hasRole(2), getEvaluacionesGrupo);
 
+// Buscar estudiantes (EN SUS GRUPOS)
+router.get("/estudiantes/buscar", verifyToken, hasRole(2), buscarEstudiantes);
+
 // Rutas para admin (rol 1)
 router.get("/reportes/admin", verifyToken, hasRole(1), getReportesAdmin);
 router.put("/reportes/:id", verifyToken, hasRole(1), actualizarReporte);
 
 module.exports = router;
-

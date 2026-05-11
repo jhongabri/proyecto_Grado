@@ -40,6 +40,9 @@ exports.getDashboardAcudiente = async (req, res) => {
     let asistenciaHoy = null;
     let docente = null;
     let estrellas = 0;
+    let recursos = [];
+    let tareas = [];
+    let evaluacion = null;
 
     if (matriculaResult.rows.length > 0) {
       const mat = matriculaResult.rows[0];
@@ -49,9 +52,12 @@ exports.getDashboardAcudiente = async (req, res) => {
         horario: mat.horario
       };
 
-      // 3. Obtener docente del grupo
+      // 3. Obtener docente del grupo (usando usuario_grupos para soporte multi-grupo)
       const docenteResult = await pool.query(
-        `SELECT id_usuario, nombre, correo FROM usuarios WHERE id_grupo = $1 AND id_rol = 2 LIMIT 1`,
+        `SELECT u.id_usuario, u.nombre, u.correo 
+         FROM usuarios u
+         INNER JOIN usuario_grupos ug ON u.id_usuario = ug.id_usuario
+         WHERE ug.id_grupo = $1 AND u.id_rol = 2 LIMIT 1`,
         [mat.id_grupo]
       );
       if (docenteResult.rows.length > 0) {
@@ -75,6 +81,27 @@ exports.getDashboardAcudiente = async (req, res) => {
       if (comportamientoResult.rows.length > 0) {
         estrellas = comportamientoResult.rows[0].estrellas;
       }
+
+      // 6. Obtener Recursos (Guías, Videos, Material)
+      const recursosResult = await pool.query(
+        `SELECT * FROM recursos WHERE id_grupo = $1 ORDER BY fecha_creacion DESC`,
+        [mat.id_grupo]
+      );
+      recursos = recursosResult.rows;
+
+      // 7. Obtener Tareas (Asignaciones)
+      const tareasResult = await pool.query(
+        `SELECT * FROM tareas WHERE id_grupo = $1 ORDER BY fecha_creacion DESC`,
+        [mat.id_grupo]
+      );
+      tareas = tareasResult.rows;
+
+      // 8. Obtener Última Evaluación de Desarrollo
+      const evalResult = await pool.query(
+        `SELECT * FROM evaluaciones_desarrollo WHERE id_nino = $1 ORDER BY fecha DESC LIMIT 1`,
+        [id_nino]
+      );
+      evaluacion = evalResult.rows[0] || null;
     }
 
     res.json({
@@ -88,7 +115,10 @@ exports.getDashboardAcudiente = async (req, res) => {
         grupo,
         docente,
         asistenciaHoy,
-        estrellas
+        estrellas,
+        recursos,
+        tareas: tareas || [],
+        evaluacion: evaluacion || null
     });
 
   } catch (error) {

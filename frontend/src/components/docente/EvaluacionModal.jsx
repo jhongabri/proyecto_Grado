@@ -185,7 +185,7 @@ export default function EvaluacionModal({ estudiante, idGrupo, onClose, onSaved 
   const currentDim = DIMENSIONES[activeTab];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
@@ -195,11 +195,11 @@ export default function EvaluacionModal({ estudiante, idGrupo, onClose, onSaved 
       {/* Modal */}
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col animate-fade-in">
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-violet-600 p-6 text-white relative overflow-hidden shrink-0">
+        <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-violet-600 p-4 md:p-5 text-white relative overflow-hidden shrink-0">
           <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
           <div className="relative z-10 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl font-black border border-white/20 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl font-black border border-white/20 shadow-lg">
                 {initials}
               </div>
               <div>
@@ -223,7 +223,7 @@ export default function EvaluacionModal({ estudiante, idGrupo, onClose, onSaved 
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 md:p-5 custom-scrollbar">
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="animate-spin h-8 w-8 border-b-2 border-indigo-600 rounded-full"></div>
@@ -241,7 +241,7 @@ export default function EvaluacionModal({ estudiante, idGrupo, onClose, onSaved 
                       <button
                         key={dim.key}
                         onClick={() => setActiveTab(idx)}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 flex items-center gap-2 border ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 border ${
                           activeTab === idx
                             ? "bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-200 scale-105"
                             : hasScore
@@ -260,14 +260,14 @@ export default function EvaluacionModal({ estudiante, idGrupo, onClose, onSaved 
                 </div>
 
                 {/* Active dimension card */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 md:p-5 shadow-sm">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-3xl">{currentDim.icon}</span>
+                    <span className="text-2xl">{currentDim.icon}</span>
                     <div>
-                      <h3 className="text-lg font-black text-slate-800">
+                      <h3 className="text-base font-black text-slate-800">
                         {currentDim.label}
                       </h3>
-                      <p className="text-sm text-slate-400 font-medium">
+                      <p className="text-[11px] text-slate-400 font-medium leading-tight">
                         {currentDim.desc}
                       </p>
                     </div>
@@ -281,14 +281,14 @@ export default function EvaluacionModal({ estudiante, idGrupo, onClose, onSaved 
                         <button
                           key={nivel.value}
                           onClick={() => handleScoreChange(currentDim.key, nivel.value)}
-                          className={`relative p-4 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center gap-2 group ${
+                          className={`relative p-2.5 md:p-3 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center gap-2 group ${
                             isSelected
                               ? `${nivel.border} ${nivel.bg} ring-2 ${nivel.ring} scale-105 shadow-lg`
                               : "border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50"
                           }`}
                         >
                           <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-sm transition-all ${
+                            className={`w-7 h-7 rounded-full flex items-center justify-center text-white font-black text-xs transition-all ${
                               isSelected ? nivel.color : "bg-slate-200 text-slate-400"
                             }`}
                           >
@@ -323,7 +323,7 @@ export default function EvaluacionModal({ estudiante, idGrupo, onClose, onSaved 
                       value={observations[currentDim.obsKey]}
                       onChange={(e) => handleObsChange(currentDim.obsKey, e.target.value)}
                       placeholder={`¿Qué destaca o necesita refuerzo en ${currentDim.label.toLowerCase()}?`}
-                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all resize-none bg-slate-50"
+                      className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all resize-none bg-slate-50"
                     />
                   </div>
 
@@ -347,7 +347,7 @@ export default function EvaluacionModal({ estudiante, idGrupo, onClose, onSaved 
                 </div>
 
                 {/* General observation */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
                     📝 Observación General
                   </label>
@@ -370,7 +370,7 @@ export default function EvaluacionModal({ estudiante, idGrupo, onClose, onSaved 
                     Perfil de Desarrollo
                   </h4>
                   {hasAnyScore ? (
-                    <ResponsiveContainer width="100%" height={240}>
+                    <ResponsiveContainer width="100%" height={200}>
                       <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
                         <PolarGrid stroke="#e2e8f0" />
                         <PolarAngleAxis
@@ -422,7 +422,7 @@ export default function EvaluacionModal({ estudiante, idGrupo, onClose, onSaved 
                       return (
                         <div
                           key={dim.key}
-                          className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-slate-50 transition"
+                          className="flex items-center justify-between py-1.5 px-2 rounded-xl hover:bg-slate-50 transition"
                         >
                           <div className="flex items-center gap-2">
                             <span className="text-base">{dim.icon}</span>
@@ -457,7 +457,7 @@ export default function EvaluacionModal({ estudiante, idGrupo, onClose, onSaved 
         </div>
 
         {/* Footer */}
-        <div className="p-5 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
           <div>
             {error && (
               <p className="text-red-600 text-xs font-bold bg-red-50 px-4 py-2 rounded-xl border border-red-200">

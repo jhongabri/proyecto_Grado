@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import DashboardLayout from "../layouts/DashboardLayout";
 import API from "../api/axios";
 import EvaluacionModal from "../components/docente/EvaluacionModal";
+import BoletinModal from "../components/docente/BoletinModal";
+import SearchStudentModal from "../components/SearchStudentModal";
 
 import {
   AcademicCapIcon,
@@ -14,7 +16,13 @@ import {
   ExclamationTriangleIcon,
   TrashIcon,
   UserPlusIcon,
-  PencilIcon
+  PencilIcon,
+  PrinterIcon,
+  VideoCameraIcon,
+  CloudArrowUpIcon,
+  FolderIcon,
+  LinkIcon,
+  MagnifyingGlassIcon
 } from "@heroicons/react/24/outline";
 
 import {
@@ -28,6 +36,10 @@ import {
   PieChart,
   Pie,
   Cell,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
 } from "recharts";
 
 const COLORS = ["#22c55e", "#ef4444", "#eab308"];
@@ -84,6 +96,21 @@ export default function DocenteDashboard() {
   const [evalModalOpen, setEvalModalOpen] = useState(false);
   const [evalEstudiante, setEvalEstudiante] = useState(null);
 
+  // Estados para Boletín/Reporte
+  const [boletinModalOpen, setBoletinModalOpen] = useState(false);
+  const [boletinEstudiante, setBoletinEstudiante] = useState(null);
+
+  // Búsqueda
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+
+  // Estados para Recursos
+  const [recursos, setRecursos] = useState([]);
+  const [recursosLoading, setRecursosLoading] = useState(false);
+  const [recursoForm, setRecursoForm] = useState({ titulo: "", descripcion: "", tipo: "guia", url: "" });
+
+  const [tareaArchivo, setTareaArchivo] = useState(null);
+  const [recursoArchivo, setRecursoArchivo] = useState(null);
+
   // Handlers para el sidebar
   const handleDashboardClick = () => setActiveView("dashboard");
   const handleGestionClick = () => setActiveView("gestion");
@@ -115,6 +142,14 @@ export default function DocenteDashboard() {
     const id = e.target.value;
     setLoading(true);
     setAsistenciaCargada(false);
+    setEstudiantesAsistencia([]);
+    setEstLista([]);
+    setTareas([]);
+    setEvaluaciones([]);
+    setRecursos([]);
+    setEstrellas({});
+    setImportResult(null);
+    setFile(null);
     fetchDashboardData(id);
   };
 
@@ -191,9 +226,8 @@ export default function DocenteDashboard() {
       
       setImportResult(res.data.resultados);
       
-      // Recargar datos del dashboard
-      const dashRes = await API.get("/docente/dashboard");
-      setEstudiantes(dashRes.data.estudiantes);
+      // Recargar datos del dashboard para el grupo activo
+      fetchDashboardData(grupoActivo.id_grupo);
       
       // Recargar estudiantes de asistencia
       loadEstudiantesAsistencia(fechaAsistencia);
@@ -207,9 +241,10 @@ export default function DocenteDashboard() {
 
   // ========== MANUAL MANAGEMENT FUNCTIONS ============
   const loadEstudiantesLista = async () => {
+    if (!grupoActivo) return;
     setEstListaLoading(true);
     try {
-      const res = await API.get("/docente/estudiantes/lista");
+      const res = await API.get(`/docente/estudiantes/lista?id_grupo=${grupoActivo.id_grupo}`);
       setEstLista(res.data);
     } catch (e) {
       console.error(e);
@@ -220,6 +255,7 @@ export default function DocenteDashboard() {
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
+    if (!grupoActivo) return;
     setAdding(true);
     setAddingError("");
     setAddingSuccess("");
@@ -228,7 +264,7 @@ export default function DocenteDashboard() {
         await API.put(`/docente/estudiantes/${editingId}`, addForm);
         setAddingSuccess("Estudiante actualizado correctamente.");
       } else {
-        await API.post("/docente/estudiantes/manual", addForm);
+        await API.post("/docente/estudiantes/manual", { ...addForm, id_grupo: grupoActivo.id_grupo });
         setAddingSuccess("Estudiante agregado correctamente.");
       }
       setAddForm({ nombres: "", apellidos: "", fecha_nacimiento: "", documento: "" });
@@ -236,8 +272,7 @@ export default function DocenteDashboard() {
       loadEstudiantesLista();
       setTimeout(() => setAddingSuccess(""), 3000);
       
-      const dashRes = await API.get("/docente/dashboard");
-      setEstudiantes(dashRes.data.estudiantes);
+      fetchDashboardData(grupoActivo.id_grupo);
     } catch (err) {
       setAddingError(err.response?.data?.message || "Error al procesar estudiante.");
     } finally {
@@ -262,13 +297,12 @@ export default function DocenteDashboard() {
 
   const handleDeleteEstudiante = async (id_matricula) => {
     if (!window.confirm("¿Seguro que deseas retirar a este estudiante de tu grupo?")) return;
+    if (!grupoActivo) return;
     setAddingError("");
     try {
       await API.delete(`/docente/estudiantes/${id_matricula}`);
       loadEstudiantesLista();
-      
-      const dashRes = await API.get("/docente/dashboard");
-      setEstudiantes(dashRes.data.estudiantes);
+      fetchDashboardData(grupoActivo.id_grupo);
     } catch (err) {
       alert("Error al retirar al estudiante.");
     }
@@ -293,16 +327,63 @@ export default function DocenteDashboard() {
       setReporteDescripcion("");
       setReporteTipo("general");
       
-      // Recargar reportes
-      const res = await API.get("/docente/dashboard");
-      setReportes(res.data.reportes);
+      fetchDashboardData(grupoActivo?.id_grupo);
       
     } catch (error) {
       setReporteError(error.response?.data?.message || "Error al enviar reporte");
+    } finally {
+      setReporteLoading(false);
     }
   };
 
-  // ====== TAREAS BACKEND HANDLERS ======
+  // ========== RECURSOS FUNCTIONS ============
+  const loadRecursos = async () => {
+    if (!grupoActivo) return;
+    setRecursosLoading(true);
+    try {
+      const res = await API.get(`/docente/recursos?id_grupo=${grupoActivo.id_grupo}`);
+      setRecursos(res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRecursosLoading(false);
+    }
+  };
+
+  const handleCrearRecurso = async (e) => {
+    e.preventDefault();
+    if (!grupoActivo) return;
+    try {
+      const formData = new FormData();
+      formData.append("id_grupo", grupoActivo.id_grupo);
+      formData.append("titulo", recursoForm.titulo);
+      formData.append("descripcion", recursoForm.descripcion);
+      formData.append("tipo", recursoForm.tipo);
+      formData.append("url", recursoForm.url || "");
+      if (recursoArchivo) {
+        formData.append("archivo", recursoArchivo);
+      }
+
+      await API.post("/docente/recursos", formData);
+      
+      setRecursoForm({ titulo: "", descripcion: "", tipo: "guia", url: "" });
+      setRecursoArchivo(null);
+      loadRecursos();
+      alert("Recurso publicado con éxito");
+    } catch (err) {
+      alert("Error al publicar recurso");
+    }
+  };
+
+  const handleDeleteRecurso = async (id) => {
+    if (!window.confirm("¿Eliminar este recurso?")) return;
+    try {
+      await API.delete(`/docente/recursos/${id}`);
+      loadRecursos();
+    } catch (err) {
+      alert("Error al eliminar");
+    }
+  };// ====== TAREAS BACKEND HANDLERS ======
   const loadTareas = async () => {
     if (!grupoActivo) return;
     setTareasLoading(true);
@@ -320,14 +401,25 @@ export default function DocenteDashboard() {
     e.preventDefault();
     if (!grupoActivo) return;
     try {
-      await API.post("/docente/tareas", {
-        ...nuevaTarea,
-        id_grupo: grupoActivo.id_grupo
-      });
+      const formData = new FormData();
+      formData.append("id_grupo", grupoActivo.id_grupo);
+      formData.append("titulo", nuevaTarea.titulo);
+      formData.append("descripcion", nuevaTarea.descripcion);
+      formData.append("fecha_entrega", nuevaTarea.fecha_entrega);
+      formData.append("recurso_url", nuevaTarea.recurso_url || "");
+      if (tareaArchivo) {
+        formData.append("archivo", tareaArchivo);
+      }
+
+      await API.post("/docente/tareas", formData);
+      
       setNuevaTarea({ titulo: "", descripcion: "", fecha_entrega: "", recurso_url: "" });
+      setTareaArchivo(null);
       loadTareas();
+      alert("Tarea asignada con éxito");
     } catch (error) {
       console.error(error);
+      alert("Error al asignar tarea");
     }
   };
 
@@ -407,21 +499,26 @@ export default function DocenteDashboard() {
     <DashboardLayout
       title={
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <span>
+          <span className="font-black text-2xl tracking-tight text-slate-800">
             {activeView === "gestion" ? "Gestión" : activeView === "reportes" ? "Reportes" : "Dashboard"}
           </span>
           {grupos.length > 0 && (
-            <select 
-              value={grupoActivo?.id_grupo || ""} 
-              onChange={handleGrupoChange}
-              className="text-sm bg-white/10 border border-white/20 rounded-lg px-3 py-1 text-white focus:outline-none focus:ring-2 focus:ring-white/50"
-            >
-              {grupos.map(g => (
-                <option key={g.id_grupo} value={g.id_grupo} className="text-gray-800">
-                  {g.nombre}
-                </option>
-              ))}
-            </select>
+            <div className="relative group">
+              <select 
+                value={grupoActivo?.id_grupo || ""} 
+                onChange={handleGrupoChange}
+                className="appearance-none pl-10 pr-10 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 text-sm font-bold rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all cursor-pointer hover:bg-white hover:shadow-md shadow-indigo-100/20"
+              >
+                {grupos.map(g => (
+                  <option key={g.id_grupo} value={g.id_grupo} className="text-slate-800 font-medium">
+                    Grupo: {g.nombre}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-500">
+                <UserGroupIcon className="w-4 h-4" />
+              </div>
+            </div>
           )}
         </div>
       }
@@ -609,16 +706,6 @@ export default function DocenteDashboard() {
               <UserGroupIcon className="w-5 h-5" /> Estudiantes
             </button>
             <button
-              onClick={() => setGestionSubView("tareas")}
-              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
-                gestionSubView === "tareas"
-                  ? "bg-white text-indigo-600 shadow-md ring-1 ring-slate-900/5"
-                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-              }`}
-            >
-              <DocumentTextIcon className="w-5 h-5" /> Tareas
-            </button>
-            <button
               onClick={() => setGestionSubView("evaluacion")}
               className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
                 gestionSubView === "evaluacion"
@@ -627,6 +714,20 @@ export default function DocenteDashboard() {
               }`}
             >
               <AcademicCapIcon className="w-5 h-5" /> Evaluación
+            </button>
+            <button
+              onClick={() => {
+                setGestionSubView("recursos");
+                loadRecursos();
+                loadTareas();
+              }}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
+                gestionSubView === "recursos"
+                  ? "bg-white text-indigo-600 shadow-md ring-1 ring-slate-900/5"
+                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+              }`}
+            >
+              <CloudArrowUpIcon className="w-5 h-5" /> Actividades y Recursos
             </button>
           </div>
 
@@ -734,6 +835,13 @@ export default function DocenteDashboard() {
               <div className="lg:col-span-2">
                 <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center justify-between">
                    <span>Lista Actual del Grupo ({estLista.length})</span>
+                   <button 
+                     onClick={() => setSearchModalOpen(true)}
+                     className="flex items-center gap-2 px-4 py-1.5 bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl text-[11px] font-black transition-all border border-indigo-200 uppercase tracking-wider"
+                   >
+                     <MagnifyingGlassIcon className="w-4 h-4" />
+                     Buscar Alumno
+                   </button>
                 </h3>
                 
                 {addingError && <div className="bg-red-50 text-red-600 px-4 py-2 rounded-xl mb-4 text-xs border border-red-200">{addingError}</div>}
@@ -825,57 +933,60 @@ export default function DocenteDashboard() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-in">
+              <div className="flex flex-col gap-4 animate-fade-in max-w-4xl mx-auto pb-10">
                 {estudiantesAsistencia.map((est) => (
                   <div 
                     key={est.id_matricula} 
-                    className={`group relative bg-white rounded-3xl p-6 border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
-                      est.asistencia_estado === 'presente' ? 'border-emerald-100 bg-emerald-50/10' : 
-                      est.asistencia_estado === 'ausente' ? 'border-red-100 bg-red-50/10' : 'border-slate-100'
+                    className={`group flex items-center bg-white rounded-2xl p-4 border-2 transition-all duration-300 shadow-sm hover:shadow-md relative overflow-hidden ${
+                      est.asistencia_estado === 'presente' ? 'border-emerald-200 bg-emerald-50/20' : 
+                      est.asistencia_estado === 'ausente' ? 'border-red-200 bg-red-50/20' : 'border-slate-100 hover:border-indigo-200'
                     }`}
                   >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-600 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-                        {est.nombres[0]}{est.apellidos[0]}
-                      </div>
-                      <button
-                        onClick={() => handletoggleEstrella(est.id_nino)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                          (estrellas[est.id_nino] || 0) > 0 
-                            ? "bg-amber-100 text-amber-700 border border-amber-200" 
-                            : "bg-slate-100 text-slate-400 border border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-100"
-                        }`}
-                      >
-                        <span className="text-base">⭐</span>
-                        {estrellas[est.id_nino] || 0}
-                      </button>
+                    {/* Indicador lateral de color */}
+                    <div className={`absolute left-0 top-0 w-1.5 h-full ${
+                      est.asistencia_estado === 'presente' ? 'bg-emerald-500' : 
+                      est.asistencia_estado === 'ausente' ? 'bg-red-500' : 'bg-slate-200'
+                    }`}></div>
+
+                    {/* Avatar con textura */}
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-black transition-all shadow-inner border ${
+                      est.asistencia_estado === 'presente' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 
+                      est.asistencia_estado === 'ausente' ? 'bg-red-100 text-red-700 border-red-200' : 
+                      'bg-slate-100 text-slate-500 border-slate-200'
+                    }`}>
+                      {est.nombres[0]}{est.apellidos[0]}
                     </div>
 
-                    <h4 className="text-base font-bold text-slate-800 line-clamp-1">{est.nombres}</h4>
-                    <p className="text-xs text-slate-500 font-medium">{est.apellidos}</p>
+                    {/* Información Estudiante */}
+                    <div className="flex-1 min-w-0 ml-4">
+                      <h4 className="text-base font-black text-slate-800 truncate tracking-tight">{est.nombres}</h4>
+                      <p className="text-xs text-slate-500 font-bold truncate uppercase tracking-widest opacity-70">{est.apellidos}</p>
+                    </div>
 
-                    <div className="mt-6 flex gap-2">
+                    {/* Botones de Acción Resaltados */}
+                    <div className="flex gap-3 ml-4">
                       <button
                         onClick={() => handleAsistencia(est.id_matricula, "presente")}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-bold transition-all ${
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all active:scale-95 border-2 ${
                           est.asistencia_estado === "presente"
-                            ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200"
-                            : "bg-white text-slate-400 border border-slate-200 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50"
+                            ? "bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-200 ring-2 ring-emerald-500/20"
+                            : "bg-white border-emerald-100 text-emerald-500 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-100"
                         }`}
                       >
-                        <CheckCircleIcon className="w-4 h-4" />
-                        Presente
+                        <CheckCircleIcon className="w-5 h-5" />
+                        <span className="hidden sm:inline">PRESENTE</span>
                       </button>
+                      
                       <button
                         onClick={() => handleAsistencia(est.id_matricula, "ausente")}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-bold transition-all ${
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all active:scale-95 border-2 ${
                           est.asistencia_estado === "ausente"
-                            ? "bg-red-500 text-white shadow-lg shadow-red-200"
-                            : "bg-white text-slate-400 border border-slate-200 hover:border-red-300 hover:text-red-600 hover:bg-red-50"
+                            ? "bg-red-500 border-red-400 text-white shadow-lg shadow-red-200 ring-2 ring-red-500/20"
+                            : "bg-white border-red-100 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 hover:shadow-lg hover:shadow-red-100"
                         }`}
                       >
-                        <XCircleIcon className="w-4 h-4" />
-                        Ausente
+                        <XCircleIcon className="w-5 h-5" />
+                        <span className="hidden sm:inline">AUSENTE</span>
                       </button>
                     </div>
                   </div>
@@ -885,141 +996,7 @@ export default function DocenteDashboard() {
           </div>
           )}
 
-          {/* Tab Content: Tareas / Recursos */}
-          {gestionSubView === "tareas" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
-              {/* Formulario Nueva Tarea */}
-              <div className="lg:col-span-1 bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 h-fit">
-                <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-                    <DocumentTextIcon className="w-6 h-6 text-indigo-600" />
-                  </div>
-                  Nueva Tarea
-                </h3>
-                <form onSubmit={handleCrearTarea} className="space-y-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block ml-1">Título / Tema</label>
-                    <input
-                      required
-                      type="text"
-                      placeholder="Ej: Guía de colores y formas"
-                      value={nuevaTarea.titulo}
-                      onChange={(e) => setNuevaTarea({...nuevaTarea, titulo: e.target.value})}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block ml-1">Descripción de Apoyo</label>
-                    <textarea
-                      rows="4"
-                      placeholder="Instrucciones para que los padres repasen con el niño..."
-                      value={nuevaTarea.descripcion}
-                      onChange={(e) => setNuevaTarea({...nuevaTarea, descripcion: e.target.value})}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block ml-1">Fecha Sugerida de Repaso</label>
-                    <input
-                      type="date"
-                      value={nuevaTarea.fecha_entrega}
-                      onChange={(e) => setNuevaTarea({...nuevaTarea, fecha_entrega: e.target.value})}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold text-slate-600"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block ml-1">Link al Recurso (Opcional)</label>
-                    <div className="relative">
-                      <input
-                        type="url"
-                        placeholder="https://ejemplo.com/archivo.pdf"
-                        value={nuevaTarea.recurso_url}
-                        onChange={(e) => setNuevaTarea({...nuevaTarea, recurso_url: e.target.value})}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all pl-11 font-medium"
-                      />
-                      <ArrowUpTrayIcon className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
-                    </div>
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2 mt-4"
-                  >
-                    Publicar Recurso
-                  </button>
-                </form>
-              </div>
 
-              {/* Lista de Tareas */}
-              <div className="lg:col-span-2 flex flex-col">
-                <div className="flex items-center justify-between mb-6 px-2">
-                  <h3 className="text-xl font-bold text-slate-800">Recursos Publicados</h3>
-                  <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase">
-                    {tareas.length} Activos
-                  </span>
-                </div>
-
-                {tareasLoading ? (
-                  <div className="flex-1 flex justify-center items-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
-                    <div className="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full shadow-lg"></div>
-                  </div>
-                ) : tareas.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-100 text-center">
-                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-md mb-4 text-slate-300">
-                      <DocumentTextIcon className="w-8 h-8" />
-                    </div>
-                    <p className="text-slate-400 text-sm font-bold">No hay recursos publicados para este grupo.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[700px] pr-2 custom-scrollbar">
-                    {tareas.map((t) => (
-                      <div key={t.id_tarea} className="bg-white p-7 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 group relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-3">
-                              <h4 className="text-lg font-black text-slate-800 group-hover:text-indigo-600 transition-colors tracking-tight">{t.titulo}</h4>
-                              <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-lg uppercase tracking-widest flex items-center gap-1">
-                                <CalendarIcon className="w-3 h-3" />
-                                {new Date(t.fecha_creacion).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <p className="text-slate-500 text-sm leading-relaxed mb-6 font-medium line-clamp-3">{t.descripcion}</p>
-                            
-                            <div className="flex flex-wrap items-center gap-3">
-                              {t.fecha_entrega && (
-                                <div className="flex items-center gap-2 text-[11px] font-black text-red-500 bg-red-50 px-4 py-2 rounded-xl border border-red-100 shadow-sm">
-                                  <CalendarIcon className="w-4 h-4" />
-                                  REPASO: {new Date(t.fecha_entrega).toLocaleDateString()}
-                                </div>
-                              )}
-                              {t.recurso_url && (
-                                <a 
-                                  href={t.recurso_url} 
-                                  target="_blank" 
-                                  rel="noreferrer"
-                                  className="flex items-center gap-2 text-[11px] font-black text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm border border-indigo-100"
-                                >
-                                  <ArrowUpTrayIcon className="w-4 h-4" />
-                                  DESCARGAR RECURSO
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                          <button 
-                            onClick={() => handleEliminarTarea(t.id_tarea)}
-                            className="p-2.5 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all active:scale-90"
-                            title="Eliminar Recurso"
-                          >
-                            <TrashIcon className="w-6 h-6" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* Tab Content: Evaluación de Desarrollo */}
           {gestionSubView === "evaluacion" && (
@@ -1098,36 +1075,287 @@ export default function DocenteDashboard() {
                           </div>
 
                           {evalData ? (
-                            <div className="grid grid-cols-3 gap-1.5">
-                              {[
-                                { key: "comunicativa", icon: "💬", label: "Com" },
-                                { key: "cognitiva", icon: "🧠", label: "Cog" },
-                                { key: "socioafectiva", icon: "🤝", label: "Soc" },
-                                { key: "corporal", icon: "🏃", label: "Cor" },
-                                { key: "artistica", icon: "🎨", label: "Art" },
-                                { key: "autonomia", icon: "⭐", label: "Aut" },
-                              ].map((d) => {
-                                const val = evalData[d.key];
-                                const style = getNivelStyle(val);
-                                return (
-                                  <div
-                                    key={d.key}
-                                    className={`${style.bg} ${style.border} border rounded-lg py-1.5 px-2 text-center`}
-                                  >
-                                    <span className="text-xs">{d.icon}</span>
-                                    <p className={`text-[10px] font-black ${style.text}`}>{val}/4</p>
-                                  </div>
-                                );
-                              })}
+                            <div className="h-40 w-full bg-slate-50/50 rounded-xl border border-slate-100 mt-2 overflow-hidden">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart 
+                                  cx="50%" 
+                                  cy="50%" 
+                                  outerRadius="65%" 
+                                  data={[
+                                    { dimension: "Com", valor: evalData.comunicativa || 0 },
+                                    { dimension: "Cog", valor: evalData.cognitiva || 0 },
+                                    { dimension: "Soc", valor: evalData.socioafectiva || 0 },
+                                    { dimension: "Cor", valor: evalData.corporal || 0 },
+                                    { dimension: "Art", valor: evalData.artistica || 0 },
+                                    { dimension: "Aut", valor: evalData.autonomia || 0 },
+                                  ]}
+                                >
+                                  <PolarGrid stroke="#e2e8f0" />
+                                  <PolarAngleAxis
+                                    dataKey="dimension"
+                                    tick={{ fill: "#64748b", fontSize: 9, fontWeight: 700 }}
+                                  />
+                                  <Radar
+                                    name="Desarrollo"
+                                    dataKey="valor"
+                                    stroke="#8b5cf6"
+                                    fill="#8b5cf6"
+                                    fillOpacity={0.3}
+                                    strokeWidth={2}
+                                  />
+                                </RadarChart>
+                              </ResponsiveContainer>
                             </div>
                           ) : (
-                            <div className="flex items-center justify-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                              <p className="text-xs text-slate-400 font-bold">Toca para evaluar →</p>
+                            <div className="h-40 w-full flex flex-col items-center justify-center text-slate-400 bg-slate-50/30 rounded-xl border border-dashed border-slate-200 mt-2">
+                               <AcademicCapIcon className="w-8 h-8 opacity-30 mb-2" />
+                               <span className="text-[10px] font-bold uppercase tracking-widest">Pendiente de evaluación</span>
                             </div>
                           )}
+
+                          <div className="mt-5 pt-4 border-t border-slate-50 flex gap-2">
+                             <button
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 setEvalEstudiante(est);
+                                 setEvalModalOpen(true);
+                               }}
+                               className="flex-1 bg-violet-50 text-violet-600 hover:bg-violet-600 hover:text-white py-2.5 rounded-xl text-[11px] font-black transition-all border border-violet-100 uppercase tracking-wider"
+                             >
+                               {evalData ? 'Editar' : 'Evaluar'}
+                             </button>
+                             {evalData && (
+                               <button
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setBoletinEstudiante(est);
+                                   setBoletinModalOpen(true);
+                                 }}
+                                 className="flex-1 bg-slate-900 text-white hover:bg-black py-2.5 rounded-xl text-[11px] font-black transition-all shadow-lg shadow-slate-100 uppercase tracking-wider flex items-center justify-center gap-2"
+                               >
+                                 <PrinterIcon className="w-4 h-4" />
+                                 Boletín
+                               </button>
+                             )}
+                          </div>
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Sección: Actividades y Recursos */}
+          {gestionSubView === "recursos" && (
+            <div className="space-y-8 animate-fade-in">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Formulario de Carga (Recursos) */}
+                <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                      <CloudArrowUpIcon className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-slate-800 tracking-tight">Publicar Nuevo Material</h3>
+                      <p className="text-slate-500 text-sm">Videos, guías o archivos para padres</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleCrearRecurso} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Título</label>
+                        <input
+                          type="text"
+                          value={recursoForm.titulo}
+                          onChange={(e) => setRecursoForm({ ...recursoForm, titulo: e.target.value })}
+                          placeholder="Ej: Guía de Trazos"
+                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Tipo</label>
+                        <select
+                          value={recursoForm.tipo}
+                          onChange={(e) => setRecursoForm({ ...recursoForm, tipo: e.target.value })}
+                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                        >
+                          <option value="video">🎥 Video</option>
+                          <option value="guia">📝 Guía</option>
+                          <option value="archivo">📁 Archivo</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">URL o Subir Archivo</label>
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={recursoForm.url}
+                          onChange={(e) => setRecursoForm({ ...recursoForm, url: e.target.value })}
+                          placeholder="https://... (Opcional si subes archivo)"
+                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                        />
+                        <div className="relative group">
+                          <input
+                            type="file"
+                            onChange={(e) => setRecursoArchivo(e.target.files[0])}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            accept=".pdf,.doc,.docx,.jpg,.png"
+                          />
+                          <div className="w-full px-5 py-3 border-2 border-dashed border-slate-200 rounded-2xl bg-white group-hover:border-indigo-400 transition-colors flex items-center justify-between">
+                            <span className="text-sm text-slate-500 truncate font-medium">
+                              {recursoArchivo ? recursoArchivo.name : "Seleccionar archivo PDF/Word..."}
+                            </span>
+                            <ArrowUpTrayIcon className="w-5 h-5 text-indigo-500" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Descripción</label>
+                      <textarea
+                        value={recursoForm.descripcion}
+                        onChange={(e) => setRecursoForm({ ...recursoForm, descripcion: e.target.value })}
+                        placeholder="Describe el material..."
+                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium h-24 resize-none"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-indigo-100 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <CloudArrowUpIcon className="w-5 h-5" />
+                      Publicar Material
+                    </button>
+                  </form>
+                </div>
+
+                {/* Formulario de Tareas (Tareas Tradicionales) */}
+                <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                      <DocumentTextIcon className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-slate-800 tracking-tight">Asignar Tarea / Repaso</h3>
+                      <p className="text-slate-500 text-sm">Actividades con fecha sugerida</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleCrearTarea} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Título</label>
+                        <input
+                          required
+                          type="text"
+                          value={nuevaTarea.titulo}
+                          onChange={(e) => setNuevaTarea({...nuevaTarea, titulo: e.target.value})}
+                          placeholder="Ej: Repaso de vocales"
+                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 outline-none transition-all font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Fecha Repaso</label>
+                        <input
+                          type="date"
+                          value={nuevaTarea.fecha_entrega}
+                          onChange={(e) => setNuevaTarea({...nuevaTarea, fecha_entrega: e.target.value})}
+                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 outline-none transition-all font-bold text-slate-600"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Instrucciones y Archivo</label>
+                      <div className="space-y-2">
+                        <textarea
+                          value={nuevaTarea.descripcion}
+                          onChange={(e) => setNuevaTarea({...nuevaTarea, descripcion: e.target.value})}
+                          placeholder="Instrucciones para los padres..."
+                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 outline-none transition-all font-medium h-24 resize-none"
+                        />
+                        <div className="relative group">
+                          <input
+                            type="file"
+                            onChange={(e) => setTareaArchivo(e.target.files[0])}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            accept=".pdf,.doc,.docx,.jpg,.png"
+                          />
+                          <div className="w-full px-5 py-3 border-2 border-dashed border-violet-200 rounded-2xl bg-white group-hover:border-violet-400 transition-colors flex items-center justify-between">
+                            <span className="text-sm text-slate-500 truncate font-medium">
+                              {tareaArchivo ? tareaArchivo.name : "Adjuntar Guía/Tarea (Opcional)..."}
+                            </span>
+                            <CloudArrowUpIcon className="w-5 h-5 text-violet-500" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full bg-slate-900 hover:bg-black text-white font-black py-4 rounded-2xl shadow-xl shadow-slate-100 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <DocumentTextIcon className="w-5 h-5" />
+                      Asignar Tarea
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* Listas Combinadas */}
+              <div className="space-y-8">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                   <h3 className="text-2xl font-black text-slate-800">Materiales y Tareas Publicadas</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Render Recursos */}
+                  {recursos.map((rec) => (
+                    <div key={rec.id_recurso} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 relative group overflow-hidden">
+                      <div className={`absolute top-0 right-0 w-24 h-24 blur-3xl opacity-10 ${rec.tipo === 'video' ? 'bg-red-500' : rec.tipo === 'guia' ? 'bg-indigo-500' : 'bg-emerald-500'}`}></div>
+                      <div className="flex justify-between items-start mb-4 relative z-10">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-inner ${
+                          rec.tipo === 'video' ? 'bg-red-50 text-red-600' : rec.tipo === 'guia' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'
+                        }`}>
+                          {rec.tipo === 'video' ? <VideoCameraIcon className="w-6 h-6" /> : rec.tipo === 'guia' ? <DocumentTextIcon className="w-6 h-6" /> : <FolderIcon className="w-6 h-6" />}
+                        </div>
+                        <button onClick={() => handleDeleteRecurso(rec.id_recurso)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><TrashIcon className="w-5 h-5" /></button>
+                      </div>
+                      <h4 className="text-lg font-black text-slate-800 mb-2 tracking-tight group-hover:text-indigo-600 transition-colors">{rec.titulo}</h4>
+                      <p className="text-slate-500 text-sm mb-6 line-clamp-2 leading-relaxed">{rec.descripcion}</p>
+                      <a href={rec.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 transition-colors shadow-lg shadow-slate-100"><LinkIcon className="w-4 h-4" /> Ver Recurso</a>
+                    </div>
+                  ))}
+
+                  {/* Render Tareas */}
+                  {tareas.map((t) => (
+                    <div key={t.id_tarea} className="bg-white p-6 rounded-3xl border border-violet-100 shadow-sm hover:shadow-xl transition-all duration-300 relative group overflow-hidden border-t-4 border-t-violet-500">
+                      <div className="flex justify-between items-start mb-4 relative z-10">
+                        <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center text-xl shadow-inner">
+                           <DocumentTextIcon className="w-6 h-6" />
+                        </div>
+                        <button onClick={() => handleEliminarTarea(t.id_tarea)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><TrashIcon className="w-5 h-5" /></button>
+                      </div>
+                      <h4 className="text-lg font-black text-slate-800 mb-2 tracking-tight group-hover:text-violet-600 transition-colors">{t.titulo}</h4>
+                      <p className="text-slate-500 text-sm mb-4 line-clamp-2 leading-relaxed">{t.descripcion}</p>
+                      <div className="flex items-center gap-2 text-[10px] font-black text-red-500 bg-red-50 px-3 py-1.5 rounded-lg mb-4 w-fit uppercase tracking-widest">
+                        <CalendarIcon className="w-3.5 h-3.5" /> Repaso: {new Date(t.fecha_entrega).toLocaleDateString()}
+                      </div>
+                      {t.recurso_url && (
+                        <a href={t.recurso_url} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-3 bg-violet-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-colors shadow-lg shadow-violet-100"><LinkIcon className="w-4 h-4" /> Archivo Tarea</a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {recursos.length === 0 && tareas.length === 0 && (
+                  <div className="py-20 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
+                    <FolderIcon className="w-16 h-16 text-slate-300 mb-4" />
+                    <h4 className="text-xl font-black text-slate-800 mb-2">No hay actividades publicadas</h4>
+                    <p className="text-slate-500">Usa los formularios de arriba para asignar tareas o materiales.</p>
                   </div>
                 )}
               </div>
@@ -1290,6 +1518,23 @@ export default function DocenteDashboard() {
           }}
         />
       )}
+
+      {/* Modal de Boletín / Reporte PDF */}
+      {boletinModalOpen && boletinEstudiante && (
+        <BoletinModal
+          estudiante={boletinEstudiante}
+          idGrupo={grupoActivo?.id_grupo}
+          onClose={() => {
+            setBoletinModalOpen(false);
+            setBoletinEstudiante(null);
+          }}
+        />
+      )}
+      <SearchStudentModal 
+        isOpen={searchModalOpen} 
+        onClose={() => setSearchModalOpen(false)} 
+        role="docente" 
+      />
     </DashboardLayout>
   );
 }

@@ -7,7 +7,10 @@ import {
   UserGroupIcon,
   UsersIcon,
   DocumentTextIcon,
+  MagnifyingGlassIcon
 } from "@heroicons/react/24/outline";
+
+import SearchStudentModal from "../components/SearchStudentModal";
 
 import {
   BarChart,
@@ -92,6 +95,9 @@ export default function AdminDashboard() {
   const [selectedGrupos, setSelectedGrupos] = useState([]); // Ahora es un array
   const [asignandoGrupo, setAsignandoGrupo] = useState(false);
   const [grupoError, setGrupoError] = useState("");
+
+  // Búsqueda
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
 
   // ✅ FIX: Un único handler que siempre limpia el estado antes de abrir el modal
   const handleOpenAsignarModal = (docente) => {
@@ -488,6 +494,11 @@ export default function AdminDashboard() {
           )}
         </>
       )}
+      <SearchStudentModal 
+        isOpen={searchModalOpen} 
+        onClose={() => setSearchModalOpen(false)} 
+        role="admin" 
+      />
     </DashboardLayout>
   );
 }

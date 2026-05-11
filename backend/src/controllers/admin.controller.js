@@ -482,3 +482,28 @@ exports.getAllAcudientes = async (req, res) => {
     res.status(500).json({ message: "Error al obtener acudientes" });
   }
 };
+
+// Buscar estudiantes por nombre o documento (ADMIN GLOBAL)
+exports.buscarEstudiantes = async (req, res) => {
+  try {
+    let { query } = req.query;
+    if (!query) return res.json([]);
+    query = query.trim();
+
+    const result = await pool.query(
+      `SELECT DISTINCT ON (n.id_nino) n.id_nino, n.nombres, n.apellidos, n.documento, g.nombre as grupo_nombre
+       FROM ninos n
+       LEFT JOIN matriculas m ON n.id_nino = m.id_nino AND m.estado = TRUE
+       LEFT JOIN grupos g ON m.id_grupo = g.id_grupo
+       WHERE (CONCAT(n.nombres, ' ', n.apellidos) ILIKE $1 
+          OR n.documento::text ILIKE $1)
+       ORDER BY n.id_nino
+       LIMIT 10`,
+      [`%${query}%`]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Search Admin Error:", error);
+    res.status(500).json({ message: "Error al buscar" });
+  }
+};

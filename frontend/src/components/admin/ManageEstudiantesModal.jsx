@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import API from '../../api/axios';
-import { XMarkIcon, TrashIcon, UserPlusIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, TrashIcon, UserPlusIcon, PencilIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import SearchStudentModal from '../SearchStudentModal';
 
 const ManageEstudiantesModal = ({ isOpen, grupo, onClose }) => {
   const [estudiantes, setEstudiantes] = useState([]);
@@ -16,6 +17,9 @@ const ManageEstudiantesModal = ({ isOpen, grupo, onClose }) => {
   });
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
+  // Búsqueda
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen && grupo) {
@@ -166,6 +170,13 @@ const ManageEstudiantesModal = ({ isOpen, grupo, onClose }) => {
 
             <div className="flex items-center justify-between mb-3 px-1">
               <h3 className="text-sm font-bold text-slate-800">Alumnos Inscritos <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-[10px] ml-1">{estudiantes.length}</span></h3>
+              <button 
+                onClick={() => setSearchModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg text-[10px] font-black transition-all border border-indigo-100 uppercase tracking-wider"
+              >
+                <MagnifyingGlassIcon className="w-3.5 h-3.5" />
+                Buscar
+              </button>
             </div>
 
             {loading ? (
@@ -214,6 +225,11 @@ const ManageEstudiantesModal = ({ isOpen, grupo, onClose }) => {
 
         </div>
       </div>
+      <SearchStudentModal 
+        isOpen={searchModalOpen} 
+        onClose={() => setSearchModalOpen(false)} 
+        role="admin" 
+      />
     </div>
   );
 };

@@ -160,7 +160,7 @@ export default function DashboardLayout({ children, title, onDashboardClick, onG
         </header>
 
         {/* Main View Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 z-10 scroll-smooth">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth">
            <div className="max-w-7xl mx-auto pb-8">
              {children}
            </div>

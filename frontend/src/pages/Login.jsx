@@ -72,7 +72,7 @@ export default function Login() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col h-screen bg-white overflow-hidden">
 
       {/* Ticker Banner */}
       <div 
@@ -94,22 +94,22 @@ export default function Login() {
       <div className="flex flex-1 relative">
 
         {/* Lado Izquierdo (Formulario) */}
-        <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-12 relative z-10">
-          <div className="w-full max-w-md space-y-6">
+        <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-4 md:py-8 relative z-10">
+          <div className="w-full max-w-md space-y-4">
 
             {/* Header */}
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center mb-4">
+            <div className="text-center mb-4">
+              <div className="inline-flex items-center justify-center mb-2">
                 <img
                   src="/CDI-LOGO.jpg"
                   alt="Logo CDI Connect"
-                  className="w-40 h-auto object-contain mix-blend-multiply"
+                  className="w-32 h-auto object-contain mix-blend-multiply"
                 />
               </div>
-              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+              <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
                 SIGEPRO
               </h1>
-              <p className="text-gray-500 mt-2 text-sm font-medium tracking-wide">
+              <p className="text-gray-500 mt-1 text-xs font-medium tracking-wide">
                 Sistema Académico Integral
               </p>
             </div>
@@ -124,7 +124,7 @@ export default function Login() {
             )}
 
             {/* LOGIN NORMAL */}
-            <form onSubmit={handleLogin} className="space-y-5">
+            <form onSubmit={handleLogin} className="space-y-3">
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide ml-1">
                   Correo Electrónico
@@ -182,7 +182,7 @@ export default function Login() {
             </form>
 
             {/* Divider */}
-            <div className="flex items-center my-6">
+            <div className="flex items-center my-3">
               <div className="flex-1 border-t border-gray-200"></div>
               <span className="px-3 text-xs tracking-wider text-gray-500 uppercase font-medium">O continuar con</span>
               <div className="flex-1 border-t border-gray-200"></div>
@@ -203,7 +203,7 @@ export default function Login() {
             </div>
 
             {/* REGISTRO */}
-            <p className="text-center text-sm mt-8 text-gray-600">
+            <p className="text-center text-sm mt-4 text-gray-600">
               ¿Nuevo en la plataforma?{" "}
               <span
                 onClick={() => navigate("/register")}
@@ -214,7 +214,7 @@ export default function Login() {
             </p>
 
             {/* Footer */}
-            <div className="mt-8 text-center">
+            <div className="mt-4 text-center">
               <p className="text-xs text-gray-400 tracking-wider">
                 © {new Date().getFullYear()} Centro de Desarrollo Infantil.
               </p>
