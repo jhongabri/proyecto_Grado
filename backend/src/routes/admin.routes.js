@@ -14,7 +14,8 @@ const {
   actualizarEstudianteGrupo,
   vincularAcudienteNino,
   getAllAcudientes,
-  buscarEstudiantes
+  buscarEstudiantes,
+  analyzeReport
 } = require("../controllers/admin.controller");
 
 // 👇 Importación correcta
@@ -58,5 +59,8 @@ router.put("/docentes/asignar-grupo", verifyToken, hasRole(1), asignarGrupoDocen
 
 // Buscar estudiantes (GLOBAL)
 router.get("/estudiantes/buscar", verifyToken, hasRole(1), buscarEstudiantes);
+
+// Analizar reporte con IA
+router.get("/reports/:id_reporte/analyze", verifyToken, hasRole(1), analyzeReport);
 
 module.exports = router;

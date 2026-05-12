@@ -20,6 +20,8 @@ import {
   BellIcon
 } from "@heroicons/react/24/outline";
 
+import AISummaryModal from "../components/acudiente/AISummaryModal";
+
 import {
   Radar,
   RadarChart,
@@ -31,6 +33,7 @@ import {
 export default function AcudienteDashboard() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -163,7 +166,14 @@ export default function AcudienteDashboard() {
           <div className="lg:col-span-5 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/50 flex flex-col h-full">
              <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-black text-slate-800 leading-tight">Desarrollo Integral</h3>
-                <SparklesIcon className="w-6 h-6 text-indigo-500" />
+                <button 
+                  onClick={() => setShowAIModal(true)}
+                  className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all duration-300 group relative"
+                  title="Generar Resumen Mágico"
+                >
+                  <SparklesIcon className="w-6 h-6 group-hover:animate-pulse" />
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-white animate-bounce"></span>
+                </button>
              </div>
              {evaluacion ? (
                <div className="flex-1 flex flex-col items-center">
@@ -301,6 +311,10 @@ export default function AcudienteDashboard() {
         </div>
 
       </div>
+      <AISummaryModal 
+        isOpen={showAIModal} 
+        onClose={() => setShowAIModal(false)} 
+      />
     </DashboardLayout>
   );
 }

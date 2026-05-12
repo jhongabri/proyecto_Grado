@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import API from "../api/axios";
 import { MagnifyingGlassIcon, XMarkIcon, UserIcon, AcademicCapIcon } from "@heroicons/react/24/outline";
 
-export default function SearchStudentModal({ isOpen, onClose, role = "admin" }) {
+export default function SearchStudentModal({ isOpen, onClose, role = "admin", onSelect }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -29,6 +29,13 @@ export default function SearchStudentModal({ isOpen, onClose, role = "admin" }) 
       console.error("Error searching students:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSelect = (nino) => {
+    if (onSelect) {
+      onSelect(nino);
+      onClose();
     }
   };
 
@@ -70,7 +77,11 @@ export default function SearchStudentModal({ isOpen, onClose, role = "admin" }) 
               </div>
             ) : results.length > 0 ? (
               results.map((nino) => (
-                <div key={nino.id_nino} className="p-5 bg-white border border-slate-100 rounded-2xl hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-50 transition-all group flex items-center justify-between cursor-default">
+                <div 
+                  key={nino.id_nino} 
+                  onClick={() => handleSelect(nino)}
+                  className={`p-5 bg-white border border-slate-100 rounded-2xl hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-50 transition-all group flex items-center justify-between ${onSelect ? 'cursor-pointer' : 'cursor-default'}`}
+                >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                       <UserIcon className="w-6 h-6 text-indigo-600" />
@@ -88,6 +99,11 @@ export default function SearchStudentModal({ isOpen, onClose, role = "admin" }) 
                       </div>
                     </div>
                   </div>
+                  {onSelect && (
+                    <button className="px-4 py-2 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-xl opacity-0 group-hover:opacity-100 transition-all shadow-lg shadow-indigo-100">
+                      Seleccionar
+                    </button>
+                  )}
                 </div>
               ))
             ) : query.length >= 2 ? (

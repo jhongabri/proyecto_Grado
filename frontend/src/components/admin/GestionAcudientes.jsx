@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../../api/axios';
-import { UserIcon, LinkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { UserIcon, LinkIcon, MagnifyingGlassIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import SearchStudentModal from '../SearchStudentModal';
 
 export default function GestionAcudientes({ onBack }) {
     const [acudientes, setAcudientes] = useState([]);
@@ -8,6 +9,8 @@ export default function GestionAcudientes({ onBack }) {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [linking, setLinking] = useState(null); // id_usuario being linked
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -114,19 +117,17 @@ export default function GestionAcudientes({ onBack }) {
                                             )}
                                         </td>
                                         <td className="py-4 text-right pr-2">
-                                            <select 
-                                                className="text-xs border border-slate-200 rounded-lg p-1.5 outline-none focus:ring-1 focus:ring-indigo-500"
-                                                value={a.id_nino || ""}
+                                            <button 
+                                                onClick={() => {
+                                                    setSelectedUser(a);
+                                                    setSearchOpen(true);
+                                                }}
                                                 disabled={linking === a.id_usuario}
-                                                onChange={(e) => handleLink(a.id_usuario, e.target.value)}
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all font-bold text-xs group/btn"
                                             >
-                                                <option value="">Vincular con...</option>
-                                                {ninos.map(n => (
-                                                    <option key={n.id_nino} value={n.id_nino}>
-                                                        {n.nombres} {n.apellidos}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                <UserPlusIcon className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+                                                {a.id_nino ? 'Cambiar' : 'Vincular'}
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -135,6 +136,13 @@ export default function GestionAcudientes({ onBack }) {
                     </div>
                 )}
             </div>
+            
+            <SearchStudentModal 
+                isOpen={searchOpen}
+                onClose={() => setSearchOpen(false)}
+                role="admin"
+                onSelect={(nino) => handleLink(selectedUser.id_usuario, nino.id_nino)}
+            />
         </div>
     );
 }

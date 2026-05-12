@@ -1,5 +1,6 @@
 const pool = require("../config/db");
 const XLSX = require("xlsx");
+const aiService = require("../services/ai.service");
 
 // Obtener datos del dashboard del docente
 exports.getDashboardDocente = async (req, res) => {
@@ -495,5 +496,50 @@ exports.getEvaluacionesGrupo = async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ message: "Error" });
+  }
+};
+
+exports.getAISuggestions = async (req, res) => {
+  try {
+    const { id_nino, id_grupo } = req.query;
+
+    if (!id_nino || !id_grupo) {
+      return res.status(400).json({ message: "ID de niño y grupo requeridos" });
+    }
+
+    // 1. Obtener datos del niño y edad calculada
+    const ninoResult = await pool.query(
+      `SELECT n.*, EXTRACT(YEAR FROM AGE(n.fecha_nacimiento)) as edad_calculada 
+       FROM ninos n WHERE n.id_nino = $1`,
+      [id_nino]
+    );
+
+    if (ninoResult.rows.length === 0) {
+      return res.status(404).json({ message: "Niño no encontrado" });
+    }
+
+    // 2. Obtener última evaluación
+    const evalResult = await pool.query(
+      `SELECT * FROM evaluaciones_desarrollo 
+       WHERE id_nino = $1 AND id_grupo = $2 
+       ORDER BY fecha DESC LIMIT 1`,
+      [id_nino, id_grupo]
+    );
+
+    if (evalResult.rows.length === 0) {
+      return res.status(400).json({ message: "El niño aún no tiene evaluaciones registradas." });
+    }
+
+    // 3. Generar sugerencias con IA
+    const suggestions = await aiService.generateTeacherSuggestions(
+      ninoResult.rows[0],
+      evalResult.rows[0]
+    );
+
+    res.json({ suggestions });
+
+  } catch (error) {
+    console.error("AI Controller Error:", error);
+    res.status(500).json({ message: "No se pudieron generar sugerencias pedagógicas." });
   }
 };

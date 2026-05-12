@@ -39,9 +39,9 @@ export default function DashboardLayout({ children, title, onDashboardClick, onG
 
   const navItems = [
     { name: "Dashboard", icon: HomeIcon, action: () => { setActiveItem("Dashboard"); onDashboardClick?.(); setSidebarOpen(false); } },
-    { name: "Gestión", icon: Cog6ToothIcon, action: () => { setActiveItem("Gestión"); onGestionClick?.(); setSidebarOpen(false); } },
-    { name: "Reportes", icon: DocumentChartBarIcon, action: () => { setActiveItem("Reportes"); onReportesClick?.(); setSidebarOpen(false); } },
-  ];
+    { name: "Gestión", icon: Cog6ToothIcon, action: () => { setActiveItem("Gestión"); onGestionClick?.(); setSidebarOpen(false); }, roles: [1, 2] },
+    { name: "Reportes", icon: DocumentChartBarIcon, action: () => { setActiveItem("Reportes"); onReportesClick?.(); setSidebarOpen(false); }, roles: [1, 2] },
+  ].filter(item => !item.roles || item.roles.includes(usuario?.id_rol));
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans overflow-hidden">

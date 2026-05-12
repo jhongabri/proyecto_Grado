@@ -1,6 +1,7 @@
 const pool = require("../config/db");
 const bcrypt = require("bcrypt");
 const XLSX = require("xlsx");
+const aiService = require("../services/ai.service");
 
 exports.getAdminStats = async (req, res) => {
   try {
@@ -505,5 +506,31 @@ exports.buscarEstudiantes = async (req, res) => {
   } catch (error) {
     console.error("Search Admin Error:", error);
     res.status(500).json({ message: "Error al buscar" });
+  }
+};
+
+exports.analyzeReport = async (req, res) => {
+  try {
+    const { id_reporte } = req.params;
+
+    // Obtener datos del reporte
+    const reportResult = await pool.query(
+      `SELECT r.*, u.nombre as docente_nombre 
+       FROM reportes r 
+       INNER JOIN usuarios u ON r.id_docente = u.id_usuario 
+       WHERE r.id_reporte = $1`,
+      [id_reporte]
+    );
+
+    if (reportResult.rows.length === 0) {
+      return res.status(404).json({ message: "Reporte no encontrado" });
+    }
+
+    const analysis = await aiService.analyzeReport(reportResult.rows[0]);
+    res.json({ analysis });
+
+  } catch (error) {
+    console.error("AI Admin Error:", error);
+    res.status(500).json({ message: "No se pudo realizar el análisis del reporte." });
   }
 };

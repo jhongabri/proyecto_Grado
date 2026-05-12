@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const aiService = require("../services/ai.service");
 
 exports.getDashboardAcudiente = async (req, res) => {
   try {
@@ -124,5 +125,53 @@ exports.getDashboardAcudiente = async (req, res) => {
   } catch (error) {
     console.error("Error Dashboard Acudiente:", error);
     res.status(500).json({ message: "Error al cargar dashboard" });
+  }
+};
+
+exports.getAISummary = async (req, res) => {
+  try {
+    const idUsuario = req.user.id;
+
+    // 1. Obtener datos del niño vinculado
+    const ninoResult = await pool.query(
+      `SELECT n.id_nino, n.nombres, n.apellidos, n.fecha_nacimiento
+       FROM usuarios u
+       JOIN ninos n ON u.id_nino = n.id_nino
+       WHERE u.id_usuario = $1`,
+      [idUsuario]
+    );
+
+    if (ninoResult.rows.length === 0) {
+      return res.status(404).json({ message: "Niño no encontrado" });
+    }
+
+    const nino = ninoResult.rows[0];
+
+    // 2. Obtener última evaluación
+    const evalResult = await pool.query(
+      `SELECT * FROM evaluaciones_desarrollo WHERE id_nino = $1 ORDER BY fecha DESC LIMIT 1`,
+      [nino.id_nino]
+    );
+
+    if (evalResult.rows.length === 0) {
+      return res.status(404).json({ message: "No hay evaluaciones disponibles para generar un resumen." });
+    }
+
+    const evaluacion = evalResult.rows[0];
+
+    // Calcular edad simple
+    const birthDate = new Date(nino.fecha_nacimiento);
+    const age = new Date().getFullYear() - birthDate.getFullYear();
+
+    // 3. Llamar al servicio de IA
+    const summary = await aiService.generateChildSummary(
+      { nombres: nino.nombres, edad: age },
+      evaluacion
+    );
+
+    res.json({ summary });
+  } catch (error) {
+    console.error("Error in getAISummary:", error);
+    res.status(500).json({ message: error.message || "Error al generar resumen con IA" });
   }
 };

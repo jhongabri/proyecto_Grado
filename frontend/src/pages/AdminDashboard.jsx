@@ -7,7 +7,16 @@ import {
   UserGroupIcon,
   UsersIcon,
   DocumentTextIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+  ArrowPathIcon,
+  ChatBubbleBottomCenterTextIcon,
+  TrashIcon,
+  CheckIcon,
+  SparklesIcon,
+  XMarkIcon,
+  CpuChipIcon
 } from "@heroicons/react/24/outline";
 
 import SearchStudentModal from "../components/SearchStudentModal";
@@ -75,7 +84,13 @@ export default function AdminDashboard() {
   const handleReportesClick = () => setActiveView("reportes");
 
   const [reportes, setReportes] = useState([]);
-  const [reportesLoading, setReportesLoading] = useState(false);
+  const [reportesLoading, setReportesLoading] = useState(true);
+
+  // Estados para Análisis IA de Reportes
+  const [analisisModalOpen, setAnalisisModalOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [analisisAI, setAnalisisAI] = useState("");
+  const [analisisLoading, setAnalisisLoading] = useState(false);
   const [docentes, setDocentes] = useState([]);
   const [grupos, setGrupos] = useState([]);
   const [gruposLoading, setGruposLoading] = useState(false);
@@ -168,19 +183,45 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const fetchReportes = async () => {
+    setReportesLoading(true);
+    try {
+      const res = await API.get("/docente/reportes/admin");
+      setReportes(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setReportesLoading(false);
+    }
+  };
+
+  const handleUpdateReportStatus = async (id, newStatus) => {
+    try {
+      await API.put(`/docente/reportes/${id}`, { estado: newStatus });
+      fetchReportes();
+    } catch (err) {
+      console.error("Error al actualizar estado del reporte:", err);
+    }
+  };
+
+  const handleAnalyzeReport = async (reporte) => {
+    setSelectedReport(reporte);
+    setAnalisisModalOpen(true);
+    setAnalisisLoading(true);
+    setAnalisisAI("");
+    try {
+      const res = await API.get(`/admin/reports/${reporte.id_reporte}/analyze`);
+      setAnalisisAI(res.data.analysis);
+    } catch (err) {
+      console.error("Error al analizar reporte:", err);
+      setAnalisisAI("Error al generar el análisis. Por favor intente de nuevo.");
+    } finally {
+      setAnalisisLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeView === "reportes") {
-      const fetchReportes = async () => {
-        setReportesLoading(true);
-        try {
-          const res = await API.get("/docente/reportes/admin");
-          setReportes(res.data);
-        } catch (error) {
-          // Silent fail
-        } finally {
-          setReportesLoading(false);
-        }
-      };
       fetchReportes();
     }
   }, [activeView]);
@@ -232,47 +273,315 @@ export default function AdminDashboard() {
     { name: "Usuarios", cantidad: stats.totalUsuarios },
   ];
 
-  const ReportesPanel = () => (
-    <div className="max-w-4xl mx-auto py-12 px-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div className="flex items-center mb-8">
-          <svg className="w-10 h-10 text-orange-500 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
+  const ReportesPanel = () => {
+    const [filtro, setFiltro] = useState("todos");
+
+    const reportesFiltrados = reportes.filter(r => {
+      if (filtro === "todos") return true;
+      return r.estado === filtro;
+    });
+
+    return (
+      <div className="max-w-6xl mx-auto py-12 px-6 animate-fade-in">
+        {/* Header con Filtros */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Reportes del Sistema</h2>
-            <p className="text-gray-500">Reportes generados por los docentes</p>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+              <div className="p-3 bg-orange-100 rounded-2xl">
+                <DocumentTextIcon className="w-8 h-8 text-orange-600" />
+              </div>
+              Bandeja de Reportes
+            </h2>
+            <p className="text-slate-500 mt-1 font-medium">Gestión administrativa y alertas de docentes</p>
+          </div>
+
+          <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
+            {['todos', 'pendiente', 'leído', 'resuelto'].map((f) => (
+              <button
+                key={f}
+                onClick={() => setFiltro(f)}
+                className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                  filtro === f 
+                  ? 'bg-white text-slate-900 shadow-sm' 
+                  : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
           </div>
         </div>
 
         {reportesLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-            <span className="ml-3 text-lg text-gray-500">Cargando reportes...</span>
+          <div className="flex flex-col items-center justify-center py-24 bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50">
+            <div className="relative w-16 h-16 mb-6">
+              <div className="absolute inset-0 rounded-full border-t-2 border-orange-600 animate-spin"></div>
+              <DocumentTextIcon className="absolute inset-0 m-auto w-6 h-6 text-orange-600 animate-pulse" />
+            </div>
+            <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-xs">Cargando reportes...</p>
           </div>
-        ) : reportes.length === 0 ? (
-          <div className="text-center py-20">
-            <DocumentTextIcon className="mx-auto h-16 w-16 text-gray-400 mb-6" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No hay reportes</h3>
-            <p className="text-gray-500">Los reportes aparecerán aquí cuando los docentes los generen</p>
+        ) : reportesFiltrados.length === 0 ? (
+          <div className="text-center py-24 bg-white rounded-[3rem] border-2 border-dashed border-slate-200">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircleIcon className="w-10 h-10 text-slate-300" />
+            </div>
+            <h3 className="text-xl font-black text-slate-800 mb-2">Todo en orden</h3>
+            <p className="text-slate-500">No hay reportes con estado "{filtro}"</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {reportes.map((reporte) => (
-              <div key={reporte.id_reporte} className="bg-gray-50 p-6 rounded-xl border border-gray-200 hover:shadow-md transition">
-                <h4 className="font-semibold text-gray-900 mb-2">{reporte.titulo || "Reporte"}</h4>
-                <p className="text-sm text-gray-600 mb-3">{reporte.descripcion}</p>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{new Date(reporte.fecha).toLocaleDateString()}</span>
-                  <span>Docente: {reporte.nombre_docente}</span>
+          <div className="grid grid-cols-1 gap-10">
+            {reportesFiltrados.map((reporte) => (
+              <div 
+                key={reporte.id_reporte} 
+                className="group bg-white rounded-[3.5rem] border-2 border-slate-200 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-indigo-200/40 hover:border-indigo-400 transition-all duration-500 overflow-hidden"
+              >
+                <div className="flex flex-col lg:flex-row">
+                  {/* Left Accent & Teacher Info */}
+                  <div className={`w-full lg:w-72 p-10 flex flex-col items-center justify-center text-center relative ${
+                    reporte.estado === 'pendiente' ? 'bg-orange-50/50' : 
+                    reporte.estado === 'leído' ? 'bg-blue-50/50' : 'bg-emerald-50/50'
+                  }`}>
+                    {/* Status Badge Top Left */}
+                    <div className={`absolute top-6 left-6 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                      reporte.estado === 'pendiente' ? 'bg-orange-50 text-orange-600 border-orange-200' : 
+                      reporte.estado === 'leído' ? 'bg-blue-50 text-blue-600 border-blue-200' : 
+                      'bg-emerald-50 text-emerald-600 border-emerald-200'
+                    }`}>
+                      {reporte.estado}
+                    </div>
+
+                    <div className="relative mb-4">
+                      <div className={`w-24 h-24 rounded-[2rem] flex items-center justify-center text-3xl font-black shadow-xl transform group-hover:rotate-12 transition-transform duration-500 ${
+                        reporte.estado === 'pendiente' ? 'bg-orange-500 text-white shadow-orange-100' : 
+                        reporte.estado === 'leído' ? 'bg-blue-500 text-white shadow-blue-100' : 
+                        'bg-emerald-500 text-white shadow-emerald-100'
+                      }`}>
+                        {(reporte.docente_nombre || "D")[0]}
+                      </div>
+                      <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-2xl shadow-lg flex items-center justify-center">
+                        <UserGroupIcon className={`w-5 h-5 ${
+                          reporte.estado === 'pendiente' ? 'text-orange-500' : 
+                          reporte.estado === 'leído' ? 'text-blue-500' : 'text-emerald-500'
+                        }`} />
+                      </div>
+                    </div>
+                    
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Docente Remitente</p>
+                    <h4 className="text-lg font-black text-slate-800 leading-tight">
+                      {reporte.docente_nombre}
+                    </h4>
+                  </div>
+
+                  {/* Main Content */}
+                  <div className="flex-1 p-10 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-slate-50">
+                    <div>
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-lg">
+                          {new Date(reporte.fecha).toLocaleDateString('es-ES', { dateStyle: 'full' })}
+                        </span>
+                      </div>
+                      
+                      <h4 className="text-2xl font-black text-slate-900 mb-4 tracking-tight group-hover:text-indigo-600 transition-colors">
+                        {reporte.titulo || "Incidencia Reportada"}
+                      </h4>
+                      <p className="text-slate-500 font-medium leading-relaxed text-lg italic">
+                        "{reporte.descripcion}"
+                      </p>
+                    </div>
+
+                    <div className="mt-10 flex flex-wrap items-center justify-between gap-6">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-indigo-50 rounded-2xl">
+                          <SparklesIcon className="w-6 h-6 text-indigo-600" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Sugerencia</p>
+                          <p className="text-xs font-bold text-slate-600">Usa la IA para analizar la gravedad</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => handleAnalyzeReport(reporte)}
+                          className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 active:scale-95"
+                        >
+                          <SparklesIcon className="w-4 h-4" />
+                          Análisis IA
+                        </button>
+
+                        {reporte.estado !== 'resuelto' && (
+                          <button 
+                            onClick={() => handleUpdateReportStatus(reporte.id_reporte, reporte.estado === 'pendiente' ? 'leído' : 'resuelto')}
+                            className="bg-white border-2 border-slate-100 text-slate-700 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:border-indigo-200 hover:text-indigo-600 transition-all active:scale-95"
+                          >
+                            {reporte.estado === 'pendiente' ? 'Marcar Leído' : 'Cerrar Caso'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
-    </div>
-  );
+    );
+  };
+
+  // Modal de Análisis IA
+  const ReportAnalysisModal = () => {
+    if (!analisisModalOpen) return null;
+
+    return (
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setAnalisisModalOpen(false)}></div>
+        <div className="relative bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[3rem] shadow-2xl border border-white/20 animate-in zoom-in-95 duration-300">
+          <div className="p-10">
+            <button 
+              onClick={() => setAnalisisModalOpen(false)}
+              className="absolute top-8 right-8 p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-2xl transition-all"
+            >
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+
+            <div className="flex items-center gap-5 mb-10">
+              <div className="p-5 bg-gradient-to-tr from-violet-600 to-indigo-600 rounded-3xl shadow-xl shadow-indigo-100">
+                <SparklesIcon className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Análisis Estratégico IA</h3>
+                <p className="text-[10px] uppercase tracking-[0.2em] font-black text-violet-500/80">Inteligencia Administrativa CDI</p>
+              </div>
+            </div>
+
+            <div className="space-y-8">
+              <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Reporte Analizado</p>
+                <h4 className="text-lg font-black text-slate-800">{selectedReport?.titulo}</h4>
+                <p className="text-sm text-slate-500 mt-1">{selectedReport?.docente_nombre} • {new Date(selectedReport?.fecha).toLocaleDateString()}</p>
+              </div>
+
+              {analisisLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                  <div className="relative w-12 h-12">
+                    <div className="absolute inset-0 rounded-full border-2 border-violet-100"></div>
+                    <div className="absolute inset-0 rounded-full border-t-2 border-violet-600 animate-spin"></div>
+                  </div>
+                  <p className="text-sm font-black text-violet-500 animate-pulse uppercase tracking-widest">Generando Estrategia...</p>
+                </div>
+              ) : (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                  <div className="prose prose-slate max-w-none">
+                    <div className="whitespace-pre-line text-slate-600 font-medium leading-relaxed bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+                      {analisisAI}
+                    </div>
+                  </div>
+
+                  <div className="mt-8 flex gap-4">
+                    <button 
+                      onClick={() => {
+                        handleUpdateReportStatus(selectedReport.id_reporte, 'resuelto');
+                        setAnalisisModalOpen(false);
+                      }}
+                      className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 flex items-center justify-center gap-2"
+                    >
+                      <CheckIcon className="w-5 h-5" /> Resolver Ahora
+                    </button>
+                    <button 
+                      onClick={() => setAnalisisModalOpen(false)}
+                      className="px-8 bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Bot Asistente del Admin
+  const AdminBot = () => {
+    const [showBubble, setShowBubble] = useState(false);
+
+    useEffect(() => {
+      const timer = setTimeout(() => setShowBubble(true), 1500);
+      return () => clearTimeout(timer);
+    }, []);
+
+    if (activeView !== "dashboard") return null;
+
+    const reportesPendientes = reportes.filter(r => r.estado === 'pendiente').length;
+
+    return (
+      <div className="fixed bottom-10 right-10 z-[100] flex flex-col items-end gap-4 pointer-events-none">
+        {/* Chat Bubble */}
+        <div className={`max-w-xs bg-white p-7 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border-2 border-slate-200 transition-all duration-700 transform pointer-events-auto ${
+          showBubble ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-90'
+        }`}>
+          <div className="relative">
+            <button 
+              onClick={() => setShowBubble(false)}
+              className="absolute -top-2 -right-2 p-1 bg-slate-50 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <XMarkIcon className="w-3 h-3" />
+            </button>
+            <p className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+              <span className="text-xl">👋</span> ¡Hola, Administrador!
+            </p>
+            <div className="space-y-3">
+              <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                Hoy tenemos un excelente progreso en el CDI. Aquí tienes un resumen rápido:
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-indigo-50 p-3 rounded-2xl border border-indigo-100/50">
+                  <p className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter">Niños</p>
+                  <p className="text-lg font-black text-indigo-700 leading-none">{stats.totalNinos}</p>
+                </div>
+                <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-100/50">
+                  <p className="text-[9px] font-black text-emerald-400 uppercase tracking-tighter">Docentes</p>
+                  <p className="text-lg font-black text-emerald-700 leading-none">{stats.totalDocentes}</p>
+                </div>
+                <div className="col-span-2 bg-orange-50 p-3 rounded-2xl border border-orange-100/50 flex items-center justify-between">
+                  <div>
+                    <p className="text-[9px] font-black text-orange-400 uppercase tracking-tighter">Reportes Pendientes</p>
+                    <p className="text-lg font-black text-orange-700 leading-none">{reportesPendientes}</p>
+                  </div>
+                  {reportesPendientes > 0 && (
+                    <div className="w-2 h-2 rounded-full bg-orange-500 animate-ping"></div>
+                  )}
+                </div>
+              </div>
+              <button 
+                onClick={() => setActiveView("reportes")}
+                className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-slate-100"
+              >
+                Ver Reportes
+              </button>
+            </div>
+          </div>
+          {/* Arrow */}
+          <div className="absolute -bottom-2 right-8 w-4 h-4 bg-white border-r border-b border-slate-100 rotate-45"></div>
+        </div>
+
+        {/* Robot Avatar */}
+        <div 
+          className="w-20 h-20 bg-gradient-to-tr from-slate-900 to-slate-800 rounded-3xl shadow-2xl flex items-center justify-center border-[6px] border-white ring-4 ring-slate-100 cursor-pointer hover:scale-110 active:scale-95 transition-all duration-300 pointer-events-auto group relative overflow-hidden"
+          onClick={() => setShowBubble(!showBubble)}
+        >
+          <div className="absolute inset-0 bg-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <CpuChipIcon className="w-10 h-10 text-white relative z-10" />
+          
+          {/* Pulsing Aura */}
+          <div className="absolute inset-0 rounded-3xl border-2 border-white/30 animate-ping"></div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <DashboardLayout
@@ -499,6 +808,9 @@ export default function AdminDashboard() {
         onClose={() => setSearchModalOpen(false)} 
         role="admin" 
       />
+
+      <ReportAnalysisModal />
+      <AdminBot />
     </DashboardLayout>
   );
 }

@@ -26,7 +26,8 @@ const {
   crearTarea,
   getTareas,
   eliminarTarea,
-  buscarEstudiantes
+  buscarEstudiantes,
+  getAISuggestions
 } = require("../controllers/docente.controller");
 
 // Rutas para docentes (rol 2)
@@ -60,6 +61,7 @@ router.get("/evaluaciones", verifyToken, hasRole(2), getEvaluacionesGrupo);
 
 // Buscar estudiantes (EN SUS GRUPOS)
 router.get("/estudiantes/buscar", verifyToken, hasRole(2), buscarEstudiantes);
+router.get("/ai-suggestions", verifyToken, hasRole(2), getAISuggestions);
 
 // Rutas para admin (rol 1)
 router.get("/reportes/admin", verifyToken, hasRole(1), getReportesAdmin);

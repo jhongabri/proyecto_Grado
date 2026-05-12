@@ -4,26 +4,8 @@ import API from "../api/axios";
 import EvaluacionModal from "../components/docente/EvaluacionModal";
 import BoletinModal from "../components/docente/BoletinModal";
 import SearchStudentModal from "../components/SearchStudentModal";
-
-import {
-  AcademicCapIcon,
-  UserGroupIcon,
-  CalendarIcon,
-  ArrowUpTrayIcon,
-  DocumentTextIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ExclamationTriangleIcon,
-  TrashIcon,
-  UserPlusIcon,
-  PencilIcon,
-  PrinterIcon,
-  VideoCameraIcon,
-  CloudArrowUpIcon,
-  FolderIcon,
-  LinkIcon,
-  MagnifyingGlassIcon
-} from "@heroicons/react/24/outline";
+import AISuggestionsModal from "../components/docente/AISuggestionsModal";
+import { SparklesIcon, AcademicCapIcon, UserGroupIcon, CalendarIcon, ArrowUpTrayIcon, DocumentTextIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, TrashIcon, UserPlusIcon, PencilIcon, PrinterIcon, VideoCameraIcon, CloudArrowUpIcon, FolderIcon, LinkIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 
 import {
   BarChart,
@@ -102,6 +84,10 @@ export default function DocenteDashboard() {
 
   // Búsqueda
   const [searchModalOpen, setSearchModalOpen] = useState(false);
+
+  // Estados para IA Sugerencias
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [selectedNinoAI, setSelectedNinoAI] = useState(null);
 
   // Estados para Recursos
   const [recursos, setRecursos] = useState([]);
@@ -1124,20 +1110,33 @@ export default function DocenteDashboard() {
                              >
                                {evalData ? 'Editar' : 'Evaluar'}
                              </button>
-                             {evalData && (
-                               <button
-                                 onClick={(e) => {
-                                   e.stopPropagation();
-                                   setBoletinEstudiante(est);
-                                   setBoletinModalOpen(true);
-                                 }}
-                                 className="flex-1 bg-slate-900 text-white hover:bg-black py-2.5 rounded-xl text-[11px] font-black transition-all shadow-lg shadow-slate-100 uppercase tracking-wider flex items-center justify-center gap-2"
-                               >
-                                 <PrinterIcon className="w-4 h-4" />
-                                 Boletín
-                               </button>
-                             )}
-                          </div>
+                              {evalData && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedNinoAI(est.id_nino);
+                                    setAiModalOpen(true);
+                                  }}
+                                  className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 py-2.5 rounded-xl text-[11px] font-black transition-all shadow-lg shadow-indigo-100 uppercase tracking-wider flex items-center justify-center gap-2"
+                                >
+                                  <SparklesIcon className="w-4 h-4" />
+                                  Magia IA
+                                </button>
+                              )}
+                              {evalData && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setBoletinEstudiante(est);
+                                    setBoletinModalOpen(true);
+                                  }}
+                                  className="px-3 bg-slate-900 text-white hover:bg-black py-2.5 rounded-xl text-[11px] font-black transition-all shadow-lg shadow-slate-100 uppercase tracking-wider flex items-center justify-center"
+                                  title="Imprimir Boletín"
+                                >
+                                  <PrinterIcon className="w-4 h-4" />
+                                </button>
+                              )}
+                           </div>
                         </div>
                       );
                     })}
@@ -1534,6 +1533,13 @@ export default function DocenteDashboard() {
         isOpen={searchModalOpen} 
         onClose={() => setSearchModalOpen(false)} 
         role="docente" 
+      />
+
+      <AISuggestionsModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        studentId={selectedNinoAI}
+        groupId={grupoActivo?.id_grupo}
       />
     </DashboardLayout>
   );
