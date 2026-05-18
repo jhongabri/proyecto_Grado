@@ -60,3 +60,9 @@ app.use("/api/docente", docenteRoutes);
 
 const acudienteRoutes = require("./routes/acudiente.routes");
 app.use("/api/acudiente", acudienteRoutes);
+
+const nutricionRoutes = require("./routes/nutricion.routes");
+app.use("/api/nutricion", nutricionRoutes);
+
+module.exports = app;
+

@@ -4,7 +4,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 exports.generateChildSummary = async (childData, evaluationData) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
       Eres un experto en pedagogía infantil de un Centro de Desarrollo Infantil (CDI) en Colombia.
@@ -50,7 +50,7 @@ exports.generateChildSummary = async (childData, evaluationData) => {
 
 exports.generateTeacherSuggestions = async (childData, evaluationData) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
       Eres un asesor pedagógico experto para docentes de primera infancia (niños de 0 a 5 años). 
@@ -87,7 +87,7 @@ exports.generateTeacherSuggestions = async (childData, evaluationData) => {
 
 exports.analyzeReport = async (reportData) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
       Eres un consultor administrativo experto para un Centro de Desarrollo Infantil (CDI). 
@@ -115,3 +115,42 @@ exports.analyzeReport = async (reportData) => {
     throw error;
   }
 };
+
+exports.generateNutritionTip = async (childData, nutritionData) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `
+      Eres un pediatra y nutricionista infantil experto que trabaja para un Centro de Desarrollo Infantil (CDI) en Colombia bajo las pautas del ICBF.
+      Tu tarea es dar una recomendación nutricional y de hábitos saludables corta, muy amable, afectuosa y práctica para los padres de un niño basándote en sus medidas de peso y talla actuales.
+
+      DATOS DEL NIÑO:
+      - Nombre: ${childData.nombres}
+      - Edad aproximada: ${childData.edad} años
+
+      DATOS NUTRICIONALES ACTUALES:
+      - Peso: ${nutritionData.peso} kg
+      - Talla/Estatura: ${nutritionData.talla} cm
+      - IMC: ${nutritionData.imc}
+      - Diagnóstico preliminar de estado nutricional: ${nutritionData.estado_nutricional}
+
+      INSTRUCCIONES PARA EL CONSEJO:
+      1. Mantén un tono sumamente positivo, profesional y afectuoso. Saluda cordialmente.
+      2. Si el estado es "Normal", felicita a los padres y sugiere ideas sencillas para mantener sus excelentes hábitos (ej. hidratación con agua, frutas de temporada).
+      3. Si el estado es "Bajo peso", sugiere de forma amable alimentos ricos en nutrientes y calorías saludables (ej. aguacate, huevo, legumbres) de forma que no genere pánico, sino motivación.
+      4. Si el estado es "Sobrepeso" o "Riesgo de Sobrepeso", sugiere actividades lúdicas de movimiento y juegos en familia al aire libre y una reducción amigable de azúcares y alimentos ultraprocesados.
+      5. La recomendación debe ser súper corta y directa al grano (máximo 1 párrafo de 4 a 5 líneas).
+      6. Evita diagnósticos médicos formales y enfócate en consejos de alimentación lúdicos y de hábitos.
+
+      Escribe la recomendación en español:
+    `;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text().trim();
+  } catch (error) {
+    console.error("Error generating nutrition tip:", error);
+    return "¡Va excelente en su crecimiento! Continúa ofreciéndole alimentos variados, agua limpia para mantenerse hidratado y mucho tiempo de juego activo en familia.";
+  }
+};
+

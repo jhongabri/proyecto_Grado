@@ -28,6 +28,13 @@ import {
   PolarGrid,
   PolarAngleAxis,
   ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend
 } from "recharts";
 
 export default function AcudienteDashboard() {
@@ -86,7 +93,29 @@ export default function AcudienteDashboard() {
     );
   }
 
-  const { nino, grupo, docente, asistenciaHoy, estrellas, recursos, tareas, evaluacion } = data;
+  const { nino, grupo, docente, asistenciaHoy, estrellas, recursos, tareas, evaluacion, historialNutricion, nutricionActual, tipNutricional } = data;
+
+  const chartData = (historialNutricion || []).map(item => ({
+    fechaFormateada: new Date(item.fecha).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' }),
+    Peso: parseFloat(item.peso),
+    Talla: parseFloat(item.talla),
+    ...item
+  }));
+
+  const getEstadoBadge = (estado) => {
+    switch (estado) {
+      case "Bajo peso":
+        return "bg-rose-50 border-rose-200 text-rose-700";
+      case "Normal":
+        return "bg-emerald-50 border-emerald-200 text-emerald-700";
+      case "Riesgo de Sobrepeso":
+        return "bg-amber-50 border-amber-200 text-amber-700";
+      case "Sobrepeso":
+        return "bg-orange-50 border-orange-200 text-orange-700";
+      default:
+        return "bg-slate-50 border-slate-200 text-slate-500";
+    }
+  };
 
   const radarData = evaluacion ? [
     { subject: 'Comunicativa', A: evaluacion.comunicativa, fullMark: 5 },
@@ -201,11 +230,11 @@ export default function AcudienteDashboard() {
           <div className="lg:col-span-7 space-y-6">
              <div className="bg-[#f8fafc] p-1 rounded-[3.5rem] border-2 border-white shadow-2xl shadow-indigo-100/50">
                 <div className="bg-white p-8 md:p-10 rounded-[3rem] shadow-xl">
-                   <div className="flex items-center justify-between mb-10">
+                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between items-start gap-4 mb-10">
                       <h3 className="text-3xl font-black text-slate-900 tracking-tight">Tareas para Casa</h3>
-                      <div className="relative">
+                      <div className="relative shrink-0">
                         <div className="absolute -inset-1 bg-violet-500 rounded-full blur opacity-20"></div>
-                        <span className="relative px-6 py-2 bg-violet-600 text-white rounded-full text-xs font-black uppercase tracking-widest">
+                        <span className="relative px-6 py-2 bg-violet-600 text-white rounded-full text-xs font-black uppercase tracking-widest whitespace-nowrap">
                           {tareas.length} Pendientes
                         </span>
                       </div>
@@ -250,11 +279,71 @@ export default function AcudienteDashboard() {
                           </div>
                         ))
                       )}
-                   </div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </div>
+        {/* MODULO DE CRECIMIENTO Y NUTRICIÓN (SÓLO NUTRI-GUÍA PARA PADRES) */}
+        {nutricionActual && (
+          <div className="max-w-4xl mx-auto bg-white p-8 md:p-10 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/50">
+             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-slate-100 pb-6">
+                <div>
+                  <h3 className="text-3xl font-black text-slate-800 leading-tight">Nutri-Guía Inteligente</h3>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Diagnóstico y Consejos personalizados con Gemini IA</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <span className="px-5 py-2.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
+                    ⚖️ {nutricionActual.peso} kg
+                  </span>
+                  <span className="px-5 py-2.5 bg-violet-50 border border-violet-100 text-violet-700 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
+                    📏 {nutricionActual.talla} cm
+                  </span>
+                </div>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* IMC & Diagnostic State */}
+                <div className="md:col-span-1 flex flex-col gap-4">
+                  <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100 flex flex-col justify-between flex-1">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Índice IMC</span>
+                     <h4 className="text-4xl font-black text-slate-800 mt-2">{nutricionActual.imc} <span className="text-xs font-bold text-slate-400">kg/m²</span></h4>
+                  </div>
+                  <div className={`p-5 rounded-3xl border flex flex-col justify-between flex-1 ${getEstadoBadge(nutricionActual.estado_nutricional)}`}>
+                     <span className="text-[10px] font-black opacity-70 uppercase tracking-widest block">Estado Diagnosticado</span>
+                     <h4 className="text-xl font-black mt-2 uppercase tracking-tight leading-none">{nutricionActual.estado_nutricional}</h4>
+                  </div>
+                </div>
+
+                {/* Gemini Recommendation */}
+                <div className="md:col-span-2 flex flex-col justify-between gap-4">
+                  <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-900 to-indigo-950 p-6 md:p-8 text-white shadow-xl flex-1 flex flex-col justify-center">
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500 rounded-full -mr-20 -mt-20 blur-3xl opacity-30"></div>
+                    <div className="relative z-10 space-y-4">
+                       <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-lg border border-white/15">🤖</div>
+                         <div>
+                           <h4 className="text-xs font-black uppercase tracking-wider text-indigo-200 leading-none">Recomendación Pediátrica</h4>
+                           <p className="text-[10px] font-bold text-indigo-300/80 mt-1">Generado con Inteligencia Artificial</p>
+                         </div>
+                       </div>
+                       <p className="text-xs leading-relaxed text-indigo-100 font-medium italic">
+                         "{tipNutricional || "¡Excelente desarrollo físico! Mantén una alimentación variada en frutas, verduras y legumbres, asegurando una buena hidratación con agua mineral y promoviendo el juego libre en espacios abiertos."}"
+                       </p>
+                    </div>
+                  </div>
+
+                  {/* Teacher notes */}
+                  {nutricionActual.observaciones && (
+                    <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
+                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">📝 Notas de Crecimiento del Docente</h4>
+                       <p className="text-xs font-semibold text-slate-600 leading-relaxed">"{nutricionActual.observaciones}"</p>
+                    </div>
+                  )}
                 </div>
              </div>
           </div>
-        </div>
+        )}
 
         {/* RECURSOS - CON COLOR Y TEXTURA (RETO ACEPTADO) */}
         <div className="bg-[#0f172a] p-12 rounded-[4rem] text-white relative overflow-hidden shadow-2xl shadow-slate-300">

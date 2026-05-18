@@ -1,4 +1,45 @@
+# Dependency Directories
+**/node_modules/
 node_modules/
 backend/node_modules/
 frontend/node_modules/
+
+# Environment Variables & Credentials (HIGH SECURITY CRITICAL!)
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.backup
+*.env
+*.env.*
+**/.env
+**/*.env
+**/*.env.*
+
+# Build Artifacts
+**/dist/
+**/dist-ssr/
+**/.vercel/
+.vercel/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE / Editor Files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

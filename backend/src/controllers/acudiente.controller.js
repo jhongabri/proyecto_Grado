@@ -44,6 +44,9 @@ exports.getDashboardAcudiente = async (req, res) => {
     let recursos = [];
     let tareas = [];
     let evaluacion = null;
+    let historialNutricion = [];
+    let nutricionActual = null;
+    let tipNutricional = null;
 
     if (matriculaResult.rows.length > 0) {
       const mat = matriculaResult.rows[0];
@@ -103,6 +106,28 @@ exports.getDashboardAcudiente = async (req, res) => {
         [id_nino]
       );
       evaluacion = evalResult.rows[0] || null;
+
+      // 9. Obtener Historial Nutricional
+      const nutricionResult = await pool.query(
+        `SELECT * FROM registros_nutricionales WHERE id_nino = $1 ORDER BY fecha ASC`,
+        [id_nino]
+      );
+      historialNutricion = nutricionResult.rows || [];
+      nutricionActual = historialNutricion.length > 0 ? historialNutricion[historialNutricion.length - 1] : null;
+
+      // Generar Tip Nutricional con IA si hay datos
+      if (nutricionActual) {
+        const birthDate = new Date(fecha_nacimiento);
+        const age = new Date().getFullYear() - birthDate.getFullYear();
+        try {
+          tipNutricional = await aiService.generateNutritionTip(
+            { nombres: nino_nombres, edad: age },
+            nutricionActual
+          );
+        } catch (err) {
+          console.error("Error generating AI nutrition tip:", err);
+        }
+      }
     }
 
     res.json({
@@ -119,7 +144,10 @@ exports.getDashboardAcudiente = async (req, res) => {
         estrellas,
         recursos,
         tareas: tareas || [],
-        evaluacion: evaluacion || null
+        evaluacion: evaluacion || null,
+        historialNutricion,
+        nutricionActual,
+        tipNutricional
     });
 
   } catch (error) {

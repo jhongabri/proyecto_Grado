@@ -3,6 +3,7 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import API from "../api/axios";
 import EvaluacionModal from "../components/docente/EvaluacionModal";
 import BoletinModal from "../components/docente/BoletinModal";
+import RegistrarNutricionModal from "../components/docente/RegistrarNutricionModal";
 import SearchStudentModal from "../components/SearchStudentModal";
 import AISuggestionsModal from "../components/docente/AISuggestionsModal";
 import { SparklesIcon, AcademicCapIcon, UserGroupIcon, CalendarIcon, ArrowUpTrayIcon, DocumentTextIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, TrashIcon, UserPlusIcon, PencilIcon, PrinterIcon, VideoCameraIcon, CloudArrowUpIcon, FolderIcon, LinkIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
@@ -77,6 +78,10 @@ export default function DocenteDashboard() {
   const [evalLoading, setEvalLoading] = useState(false);
   const [evalModalOpen, setEvalModalOpen] = useState(false);
   const [evalEstudiante, setEvalEstudiante] = useState(null);
+
+  // Estados para Nutrición
+  const [nutricionModalOpen, setNutricionModalOpen] = useState(false);
+  const [nutricionEstudiante, setNutricionEstudiante] = useState(null);
 
   // Estados para Boletín/Reporte
   const [boletinModalOpen, setBoletinModalOpen] = useState(false);
@@ -1110,6 +1115,17 @@ export default function DocenteDashboard() {
                              >
                                {evalData ? 'Editar' : 'Evaluar'}
                              </button>
+                             <button
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 setNutricionEstudiante(est);
+                                 setNutricionModalOpen(true);
+                               }}
+                               className="px-3 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white py-2.5 rounded-xl text-[11px] font-black transition-all border border-emerald-100 uppercase tracking-wider flex items-center justify-center"
+                               title="Registrar Peso y Talla"
+                             >
+                               ⚖️
+                             </button>
                               {evalData && (
                                 <button
                                   onClick={(e) => {
@@ -1501,6 +1517,20 @@ export default function DocenteDashboard() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Modal de Nutrición */}
+      {nutricionModalOpen && nutricionEstudiante && (
+        <RegistrarNutricionModal
+          estudiante={nutricionEstudiante}
+          onClose={() => {
+            setNutricionModalOpen(false);
+            setNutricionEstudiante(null);
+          }}
+          onSaved={() => {
+            // Se puede recargar datos si fuera necesario
+          }}
+        />
       )}
 
       {/* Modal de Evaluación */}

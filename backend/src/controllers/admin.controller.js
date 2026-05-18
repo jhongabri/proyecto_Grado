@@ -526,7 +526,52 @@ exports.analyzeReport = async (req, res) => {
       return res.status(404).json({ message: "Reporte no encontrado" });
     }
 
-    const analysis = await aiService.analyzeReport(reportResult.rows[0]);
+    const report = reportResult.rows[0];
+    
+    // Generar un análisis analítico determinista e instantáneo sin consumir cuota de IA
+    const tipoLower = (report.tipo || "").toLowerCase();
+    let gravedad = "Media";
+    let sugerencias = [];
+
+    if (tipoLower.includes("infraestructura") || tipoLower.includes("daño") || tipoLower.includes("físico")) {
+      gravedad = "Alta";
+      sugerencias = [
+        "1. Coordinar una inspección inmediata del área afectada reportada por el docente.",
+        "2. Asignar presupuesto o contactar al equipo de mantenimiento autorizado del CDI.",
+        "3. Tomar medidas temporales de seguridad para resguardar a los niños en otras aulas si es necesario."
+      ];
+    } else if (tipoLower.includes("salud") || tipoLower.includes("medico") || tipoLower.includes("accidente") || tipoLower.includes("urgencia")) {
+      gravedad = "Crítica";
+      sugerencias = [
+        "1. Verificar de inmediato si el niño recibió atención de primeros auxilios y activar el protocolo médico institucional.",
+        "2. Contactar al acudiente/padre para informarle de la situación de manera clara y tranquila.",
+        "3. Dejar registro oficial firmado por el docente y el personal médico en la ficha física del estudiante."
+      ];
+    } else if (tipoLower.includes("pedagó") || tipoLower.includes("comportamiento") || tipoLower.includes("disciplina")) {
+      gravedad = "Baja";
+      sugerencias = [
+        "1. Programar un espacio de mentoría o diálogo con el docente para analizar la situación en el aula.",
+        "2. Monitorear el progreso pedagógico del niño durante los próximos controles semanales.",
+        "3. De ser necesario, sugerir al docente citar a una tutoría amigable con el acudiente."
+      ];
+    } else {
+      gravedad = "Media";
+      sugerencias = [
+        "1. Revisar detalladamente la descripción enviada y programar una sesión breve de seguimiento con el docente.",
+        "2. Registrar el reporte en la bitácora administrativa mensual del CDI.",
+        "3. Implementar medidas preventivas institucionales basadas en los detalles provistos."
+      ];
+    }
+
+    const analysis = `
+### 📊 Análisis Administrativo del Reporte
+* **Resumen:** Se ha recibido un reporte de tipo **${report.tipo || "General"}** presentado por el docente **${report.docente_nombre}**.
+* **Gravedad Estimada:** **${gravedad}** (Determinada automáticamente según el tipo de incidencia).
+
+### 📋 Acciones Recomendadas para el Administrador:
+${sugerencias.join("\n")}
+    `.trim();
+
     res.json({ analysis });
 
   } catch (error) {
