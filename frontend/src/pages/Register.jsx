@@ -2,6 +2,24 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
 
+// Componente auxiliar para mostrar cada requisito de la contraseña
+const RequirementCheck = ({ label, checked, className = "" }) => (
+  <div className={`flex items-center space-x-2 text-xs transition-colors duration-300 ${className}`}>
+    {checked ? (
+      <svg className="w-4 h-4 text-emerald-500 flex-shrink-0 transition-transform duration-300 scale-110" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+      </svg>
+    ) : (
+      <svg className="w-4 h-4 text-gray-300 flex-shrink-0 transition-colors duration-300" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" />
+      </svg>
+    )}
+    <span className={`font-semibold tracking-wide transition-colors duration-300 ${checked ? 'text-emerald-700' : 'text-gray-400'}`}>
+      {label}
+    </span>
+  </div>
+);
+
 export default function Register() {
   const navigate = useNavigate();
 
@@ -21,9 +39,29 @@ export default function Register() {
     });
   };
 
+  // 🔐 Reglas de contraseña y cálculo de fuerza en tiempo real
+  const password = form.password;
+  const checks = {
+    length: password.length >= 8,
+    hasUpper: /[A-Z]/.test(password),
+    hasLower: /[a-z]/.test(password),
+    hasNumber: /\d/.test(password),
+    hasSpecial: /[@$!%*?&._\-]/.test(password),
+  };
+
+  const completedChecksCount = Object.values(checks).filter(Boolean).length;
+  const isPasswordSecure = completedChecksCount === 5;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    // Validación extra en submit por seguridad del cliente
+    if (form.password && !isPasswordSecure) {
+      setError("La contraseña no cumple con los requisitos mínimos de seguridad.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -153,12 +191,52 @@ export default function Register() {
                   className="w-full pl-11 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 text-sm focus:bg-white focus:border-gray-300 focus:shadow-[inset_0_2px_0_0_#f97316] focus:outline-none transition-all duration-300"
                 />
               </div>
+
+              {/* Indicador de Fuerza de Contraseña */}
+              {form.password && (
+                <div className="mt-3 p-4 bg-gray-50 border border-gray-200/60 rounded-2xl space-y-3.5 animate-fade-in transition-all duration-300">
+                  {/* Cabecera y Barra de Progreso */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider">
+                      <span className="text-gray-500">Fuerza de Contraseña</span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest transition-all duration-300 ${
+                        completedChecksCount <= 2 ? 'bg-red-100 text-red-700' :
+                        completedChecksCount <= 4 ? 'bg-amber-100 text-amber-700' :
+                        'bg-emerald-100 text-emerald-700'
+                      }`}>
+                        {completedChecksCount <= 2 ? 'Débil ⚠️' :
+                         completedChecksCount <= 4 ? 'Media ⚡' :
+                         'Segura 🚀'}
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-500 ease-out ${
+                          completedChecksCount <= 2 ? 'bg-red-500' :
+                          completedChecksCount <= 4 ? 'bg-amber-500' :
+                          'bg-emerald-500'
+                        }`}
+                        style={{ width: `${(completedChecksCount / 5) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Checklist de Requisitos */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-gray-200/50">
+                    <RequirementCheck label="Mínimo 8 caracteres" checked={checks.length} />
+                    <RequirementCheck label="Una Mayúscula (A-Z)" checked={checks.hasUpper} />
+                    <RequirementCheck label="Una Minúscula (a-z)" checked={checks.hasLower} />
+                    <RequirementCheck label="Un Número (0-9)" checked={checks.hasNumber} />
+                    <RequirementCheck label="Carácter especial (ej: !@#$)" checked={checks.hasSpecial} className="sm:col-span-2" />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Botón */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (form.password.length > 0 && !isPasswordSecure)}
               className="w-full flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed mt-4"
             >
               {loading ? (

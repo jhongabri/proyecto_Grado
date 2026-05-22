@@ -26,6 +26,14 @@ exports.register = async (req, res) => {
       });
     }
 
+    // 🔐 Validación de Contraseña Segura (Mínimo 8 caracteres, 1 Mayúscula, 1 Minúscula, 1 Número y 1 Carácter Especial)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._\-])[A-Za-z\d@$!%*?&._\-]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({
+        message: "La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula, un número y un carácter especial (ej: @$!%*?&._-)"
+      });
+    }
+
     const userExists = await pool.query(
       "SELECT * FROM usuarios WHERE correo = $1",
       [correo]
@@ -186,8 +194,10 @@ exports.googleLogin = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("DEBUG googleLogin Error:", error);
     res.status(401).json({
-      message: "Error en autenticación con Google"
+      message: "Error en autenticación con Google",
+      error: error.message
     });
   }
 };
