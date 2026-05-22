@@ -345,23 +345,32 @@ export default function DocenteDashboard() {
     e.preventDefault();
     if (!grupoActivo) return;
     try {
-      const formData = new FormData();
-      formData.append("id_grupo", grupoActivo.id_grupo);
-      formData.append("titulo", recursoForm.titulo);
-      formData.append("descripcion", recursoForm.descripcion);
-      formData.append("tipo", recursoForm.tipo);
-      formData.append("url", recursoForm.url || "");
+      let fileBase64 = "";
       if (recursoArchivo) {
-        formData.append("archivo", recursoArchivo);
+        fileBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(recursoArchivo);
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = (error) => reject(error);
+        });
       }
 
-      await API.post("/docente/recursos", formData);
+      const payload = {
+        id_grupo: grupoActivo.id_grupo,
+        titulo: recursoForm.titulo,
+        descripcion: recursoForm.descripcion,
+        tipo: recursoForm.tipo,
+        url: fileBase64 || recursoForm.url || ""
+      };
+
+      await API.post("/docente/recursos", payload);
       
       setRecursoForm({ titulo: "", descripcion: "", tipo: "guia", url: "" });
       setRecursoArchivo(null);
       loadRecursos();
       alert("Recurso publicado con éxito");
     } catch (err) {
+      console.error(err);
       alert("Error al publicar recurso");
     }
   };
@@ -392,17 +401,25 @@ export default function DocenteDashboard() {
     e.preventDefault();
     if (!grupoActivo) return;
     try {
-      const formData = new FormData();
-      formData.append("id_grupo", grupoActivo.id_grupo);
-      formData.append("titulo", nuevaTarea.titulo);
-      formData.append("descripcion", nuevaTarea.descripcion);
-      formData.append("fecha_entrega", nuevaTarea.fecha_entrega);
-      formData.append("recurso_url", nuevaTarea.recurso_url || "");
+      let fileBase64 = "";
       if (tareaArchivo) {
-        formData.append("archivo", tareaArchivo);
+        fileBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(tareaArchivo);
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = (error) => reject(error);
+        });
       }
 
-      await API.post("/docente/tareas", formData);
+      const payload = {
+        id_grupo: grupoActivo.id_grupo,
+        titulo: nuevaTarea.titulo,
+        descripcion: nuevaTarea.descripcion,
+        fecha_entrega: nuevaTarea.fecha_entrega,
+        recurso_url: fileBase64 || nuevaTarea.recurso_url || ""
+      };
+
+      await API.post("/docente/tareas", payload);
       
       setNuevaTarea({ titulo: "", descripcion: "", fecha_entrega: "", recurso_url: "" });
       setTareaArchivo(null);
